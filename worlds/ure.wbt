@@ -34,8 +34,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.2653936069324086 0.19752205974310477 0.9436902401287445 1.9169982768444185
-  position 0.6796388011424259 -6.180163899029084 4.315785325868155
+  orientation 0.5392523966634406 -0.09192662700949149 -0.837111908850539 3.425079172563409
+  position 2.037471451257936 -1.3139057035306554 4.633060076310232
   exposure 1.7
 }
 TexturedBackground {
@@ -115,7 +115,7 @@ UR5e {
 }
 ConveyorBelt {
   translation 0.4842 -0.661247 0
-  rotation 0 1 0 0.00909
+  rotation 0 0 -1 3.141592653589793
   size 3.03 0.7 0.6
   appearance CorrugatedMetal {
     textureTransform TextureTransform {
@@ -161,6 +161,40 @@ Solid {
   boundingObject USE box
 }
 Solid {
+  translation 0.868065 -0.958509 0.69
+  rotation 0 0 1 -0.6544996938995746
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.18 0.001 0.16
+      }
+    }
+  ]
+  name "direct_panel(6)"
+  boundingObject USE box
+}
+Solid {
+  translation 1.30852 -1.56356 0.69
+  rotation 0 0 1 -1.963500306100425
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.18 0.001 0.16
+      }
+    }
+  ]
+  name "direct_panel(5)"
+  boundingObject USE box
+}
+Solid {
   translation -1.20358 -0.880721 0.69
   rotation 0 0 1 0.916299
   children [
@@ -195,7 +229,7 @@ Solid {
   boundingObject USE box
 }
 Solid {
-  translation 0.787509 -0.499726 0.69
+  translation 1.30664 -0.421484 0.69
   rotation 0 0 1 0.3927003061004253
   children [
     Shape {
@@ -215,7 +249,27 @@ Solid {
   }
 }
 Solid {
-  translation 0.297801 -0.584996 0.69
+  translation 0.888765 -0.410684 0.69
+  rotation 0 0 1 0.3927003061004253
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "box1(1)"
+  boundingObject USE box
+  physics DEF physic Physics {
+    mass 1.2
+  }
+}
+Solid {
+  translation 0.302586 -0.470591 0.69
   rotation 0 0 1 0.3927003061004253
   children [
     Shape {
@@ -251,7 +305,7 @@ Solid {
   physics USE physic
 }
 Solid {
-  translation 1.32818 -0.860856 0.69
+  translation 1.60624 -0.819422 0.69
   rotation 0 0 1 0.3927003061004253
   children [
     Shape {
@@ -269,7 +323,25 @@ Solid {
   physics USE physic
 }
 Solid {
-  translation 1.02376 -0.776237 0.69
+  translation 1.87193 -0.393768 0.69
+  rotation 0 0 1 0.3927003061004253
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "box2(9)"
+  boundingObject USE box
+  physics USE physic
+}
+Solid {
+  translation 1.9157 -0.777842 0.69
   rotation 0 0 1 0.3927003061004253
   children [
     Shape {
@@ -287,7 +359,79 @@ Solid {
   physics USE physic
 }
 Solid {
-  translation 1.34246 -0.504846 0.69
+  translation 0.27954 -0.721741 0.69
+  rotation 0 0 1 0.3927003061004253
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "box2(8)"
+  boundingObject USE box
+  physics USE physic
+}
+Solid {
+  translation 1.25558 -0.892507 0.69
+  rotation 0 0 1 0.3927003061004253
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "box2(7)"
+  boundingObject USE box
+  physics USE physic
+}
+Solid {
+  translation 0.597157 -0.432034 0.69
+  rotation 0 0 1 0.3927003061004253
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "box2(6)"
+  boundingObject USE box
+  physics USE physic
+}
+Solid {
+  translation 1.00141 -0.779559 0.69
+  rotation 0 0 1 0.3927003061004253
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "box2(10)"
+  boundingObject USE box
+  physics USE physic
+}
+Solid {
+  translation 1.63269 -0.440726 0.69
   rotation 0 0 1 0.3927003061004253
   children [
     Shape {
@@ -303,6 +447,23 @@ Solid {
   name "box2(4)"
   boundingObject USE box
   physics USE physic
+}
+Solid {
+  translation 1.61924 -1.01376 0.5982
+  rotation 1 0 0 0.6545496938995746
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.7 0.005 0.001
+      }
+    }
+  ]
+  name "box2(5)"
+  boundingObject USE box
 }
 ConveyorBelt {
   translation -1.382 -1.81235 -0.001
@@ -332,7 +493,7 @@ ConveyorBelt {
   speed 0.2
 }
 ConveyorBelt {
-  translation 1.62004 -2.51351 -0.007
+  translation 1.62004 -2.51351 -0.003
   rotation 0 0 1 1.5707996938995747
   name "conveyor belt(3)"
   size 3 0.7 0.6
@@ -372,4 +533,9 @@ Floor {
     type "light strip"
     colorOverride 0.6 1 0.8
   }
+}
+ConveyorBelt {
+  translation 2.1058 0.295413 0
+  rotation 0 0.7071067811865475 0.7071067811865475 0
+  name "conveyor belt(4)"
 }
