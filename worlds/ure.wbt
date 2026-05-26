@@ -1,0 +1,375 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/apartment_structure/protos/Wall.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/Roughcast.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/solids/protos/SolidBox.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/GalvanizedMetal.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/CorrugatedMetal.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/devices/robotiq/protos/Robotiq3fGripper.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/universal_robots/protos/UR5e.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/conveyors/protos/ConveyorBelt.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/containers/protos/PlasticCrate.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/nvidia/jetbot/protos/JetBotRaspberryPiCamera.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/Floor.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/Parquetry.proto"
+
+WorldInfo {
+  info [
+    "Universal Robot UR3e, UR5e and UR10e grasping cans using Robotiq 3F grippers."
+  ]
+  title "Universal Robot"
+  basicTimeStep 8
+  physicsDisableAngularThreshold 0.1
+  contactProperties [
+    ContactProperties {
+      bounce 0.1
+    }
+    ContactProperties {
+      material1 "slope"
+      coulombFriction [
+        0.5
+      ]
+    }
+  ]
+}
+Viewpoint {
+  orientation -0.2653936069324086 0.19752205974310477 0.9436902401287445 1.9169982768444185
+  position 0.6796388011424259 -6.180163899029084 4.315785325868155
+  exposure 1.7
+}
+TexturedBackground {
+  texture "factory"
+}
+Wall {
+  translation 0.359103 -8.24225 0
+  name "wall(1)"
+  size 15 0.2 2.4
+  appearance Roughcast {
+    textureTransform TextureTransform {
+      scale 2 1
+    }
+  }
+}
+Pose {
+  translation 1.77 2.67 1.05
+  rotation 1 0 0 1.5707996938995747
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 0 0
+        roughness 1
+        metalness 0
+      }
+      geometry Box {
+        size 0.23 0.3 0.01
+      }
+    }
+  ]
+}
+SolidBox {
+  translation -0.135583 0.367148 0.305
+  size 1.8 0.4 0.61
+  appearance GalvanizedMetal {
+    colorOverride 0.7 1 1
+  }
+}
+SolidBox {
+  translation -0.137236 0.754753 0.305
+  name "box(3)"
+  size 1.8 0.4 0.62
+  appearance GalvanizedMetal {
+    colorOverride 0.7 1 1
+  }
+}
+SolidBox {
+  translation -0.135 -0.0323 0.305
+  name "box(2)"
+  size 1.8 0.4 0.61
+  appearance DEF appear GalvanizedMetal {
+    colorOverride 0.7 1 1
+  }
+}
+UR5e {
+  translation 0 0 0.61
+  rotation 5.67193e-08 2.39745e-09 -1 1.5708003061004252
+  controller "ur5e"
+  controllerArgs [
+    ""
+  ]
+  selfCollision FALSE
+  toolSlot [
+    JetBotRaspberryPiCamera {
+      translation 0.01 0.1 0.02
+      rotation 0 0 1 1.5708003061004252
+      fieldOfView 2.2
+      far 2
+    }
+    Robotiq3fGripper {
+    }
+    DistanceSensor {
+      translation 0.01 0.02 -0.01
+      rotation 0 0 1 1.570796
+    }
+  ]
+}
+ConveyorBelt {
+  translation 0.4842 -0.661247 0
+  rotation 0 1 0 0.00909
+  size 3.03 0.7 0.6
+  appearance CorrugatedMetal {
+    textureTransform TextureTransform {
+      scale 6 3.1
+    }
+  }
+  borderThickness 0.001
+  borderHeight 0
+  speed 0.2
+}
+Solid {
+  translation -0.964355 -3.36574 0.69
+  rotation 0 0 1 2.4871
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.18 0.001 0.16
+      }
+    }
+  ]
+  name "direct_panel(1)"
+  boundingObject USE box
+}
+Solid {
+  translation -1.0805 -1.07366 0.69
+  rotation 0 0 1 0.916299
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.18 0.001 0.16
+      }
+    }
+  ]
+  name "direct_panel(4)"
+  boundingObject USE box
+}
+Solid {
+  translation -1.20358 -0.880721 0.69
+  rotation 0 0 1 0.916299
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.6 0.001 0.16
+      }
+    }
+  ]
+  name "direct_panel(2)"
+  boundingObject USE box
+}
+Solid {
+  translation -1.08801 -3.49037 0.69
+  rotation 0 0 0.9999999999999999 2.4870996938995744
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.6 0.001 0.16
+      }
+    }
+  ]
+  name "direct_panel(3)"
+  boundingObject USE box
+}
+Solid {
+  translation 0.787509 -0.499726 0.69
+  rotation 0 0 1 0.3927003061004253
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "box1"
+  boundingObject USE box
+  physics DEF physic Physics {
+    mass 1.2
+  }
+}
+Solid {
+  translation 0.297801 -0.584996 0.69
+  rotation 0 0 1 0.3927003061004253
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "box2"
+  boundingObject USE box
+  physics USE physic
+}
+Solid {
+  translation 0.584888 -0.867191 0.69
+  rotation 0 0 1 0.3927003061004253
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "box2(1)"
+  boundingObject USE box
+  physics USE physic
+}
+Solid {
+  translation 1.32818 -0.860856 0.69
+  rotation 0 0 1 0.3927003061004253
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "box2(2)"
+  boundingObject USE box
+  physics USE physic
+}
+Solid {
+  translation 1.02376 -0.776237 0.69
+  rotation 0 0 1 0.3927003061004253
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "box2(3)"
+  boundingObject USE box
+  physics USE physic
+}
+Solid {
+  translation 1.34246 -0.504846 0.69
+  rotation 0 0 1 0.3927003061004253
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "box2(4)"
+  boundingObject USE box
+  physics USE physic
+}
+ConveyorBelt {
+  translation -1.382 -1.81235 -0.001
+  rotation 0 0 1 -1.570795613280012
+  name "conveyor belt(1)"
+  size 3 0.7 0.6
+  appearance CorrugatedMetal {
+    textureTransform TextureTransform {
+      scale 6 3.1
+    }
+  }
+  borderThickness 0.001
+  borderHeight 0
+  speed 0.2
+}
+ConveyorBelt {
+  translation -0.23147 -3.66367 -0.002
+  name "conveyor belt(2)"
+  size 3 0.7 0.6
+  appearance CorrugatedMetal {
+    textureTransform TextureTransform {
+      scale 6 3.1
+    }
+  }
+  borderThickness 0.001
+  borderHeight 0
+  speed 0.2
+}
+ConveyorBelt {
+  translation 1.62004 -2.51351 -0.007
+  rotation 0 0 1 1.5707996938995747
+  name "conveyor belt(3)"
+  size 3 0.7 0.6
+  appearance CorrugatedMetal {
+    textureTransform TextureTransform {
+      scale 6 3.1
+    }
+  }
+  borderThickness 0.001
+  borderHeight 0
+  speed 0.2
+}
+PlasticCrate {
+  translation -0.7393627042041899 0.4500153384224601 0.6132921547152421
+  rotation 0.9999992948418052 -0.0011507223873598437 0.00029351981095096085 0.014915659784510161
+  name "plastic crate(2)"
+  size 0.6 0.45 0.4
+  mass 1
+}
+PlasticCrate {
+  translation 0.461598 0.4500155056505901 0.613301067544832
+  rotation 0.9999999999999999 1.07223204936125e-17 8.516529418257572e-18 0.01495555180235158
+  name "plastic crate(1)"
+  size 0.6 0.45 0.4
+  mass 1
+}
+PlasticCrate {
+  translation -0.1393801350499309 0.450013975362491 0.6132887766281745
+  rotation 0.9999998902277485 0.0004472046143065773 -0.00013983033969276496 0.014903295968652398
+  name "plastic crate(3)"
+  size 0.6 0.45 0.4
+  mass 1
+}
+Floor {
+  size 17 16.7
+  appearance Parquetry {
+    type "light strip"
+    colorOverride 0.6 1 0.8
+  }
+}
