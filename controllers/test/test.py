@@ -44,10 +44,6 @@ def detect_cube():
     
 def wait_until_cube_ready(max_steps=500):
         print("Waiting for cube to enter pick zone...")
-        # Get current number of object recognized
-        number_of_objects = self.camera.getRecognitionNumberOfObjects()
-            print(f'Recognized {number_of_objects} objects.')
-            print(' ')
     
         image_center_x = camera.getWidth() / 2
         image_center_y = camera.getHeight() / 2
