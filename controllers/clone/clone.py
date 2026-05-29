@@ -1,6 +1,3 @@
-#include <webots/camera.h>
-#include <webots/camera_recognition_object.h>
-
 from controller import Supervisor
 
 TIME_STEP = 32
@@ -10,75 +7,98 @@ robot = Supervisor()
 # CAMERA SETUP
 # =========================
 
-CAMERA_NAME = "camera"   
+CAMERA_NAME = "camera"   # Nếu sai tên, mình sẽ đổi sau
 
 camera = robot.getDevice(CAMERA_NAME)
 camera.enable(TIME_STEP)
-
-camera.recognitionEnable(TIME_STEP)
 
 print("Camera enabled:", CAMERA_NAME)
 print("Camera width:", camera.getWidth())
 print("Camera height:", camera.getHeight())
 
-def detect_cube():
-        objects = camera.getRecognitionObjects()
-        if len(objects) == 0:
-            return None
-    
-        # Return the first detected object (or filter by model/color)
-        obj = objects[0]
-        pos_on_image = obj.getPositionOnImage()   # pixel x, y
-        size_on_image = obj.getSizeOnImage()       # pixel w, h
-        position_3d  = obj.getPosition()          # x, y, z relative to robot
-        model_name   = obj.getModel()
-    
-        return {
-            "cx": pos_on_image[0],
-            "cy": pos_on_image[1],
-            "area": size_on_image[0] * size_on_image[1],
-            "position_3d": position_3d,
-            "model": model_name
-        }
+def detect_white_cube():
+    image = camera.getImage()
+    width = camera.getWidth()
+    height = camera.getHeight()
 
+    sum_x = 0
+    sum_y = 0
+    count = 0
+
+    max_brightness = 0
+    brightest_pixel = (0, 0, 0)
+
+    sample_step = 4
+
+    for y in range(0, height, sample_step):
+        for x in range(0, width, sample_step):
+            r = camera.imageGetRed(image, width, x, y)
+            g = camera.imageGetGreen(image, width, x, y)
+            b = camera.imageGetBlue(image, width, x, y)
+
+            brightness = (r + g + b) / 3
+
+            if brightness > max_brightness:
+                max_brightness = brightness
+                brightest_pixel = (r, g, b)
+
+            # Nhận diện vật trắng nhưng nới điều kiện
+            if r > 140 and g > 140 and b > 140 and abs(r - g) < 50 and abs(g - b) < 50:
+                sum_x += x
+                sum_y += y
+                count += 1
+
+    if count < 10:
+        return None, max_brightness, brightest_pixel
+
+    center_x = sum_x / count
+    center_y = sum_y / count
+
+    return (center_x, center_y, count), max_brightness, brightest_pixel
     
 def wait_until_cube_ready(max_steps=500):
-        print("Waiting for cube to enter pick zone...")
-        # Get current number of object recognized
-        number_of_objects = self.camera.getRecognitionNumberOfObjects()
-            print(f'Recognized {number_of_objects} objects.')
-            print(' ')
-    
-        image_center_x = camera.getWidth() / 2
-        image_center_y = camera.getHeight() / 2
-        PICK_ZONE_X = 120
-        PICK_ZONE_Y = 120
-        MIN_CUBE_AREA = 150
-    
-        for i in range(max_steps):
-            result = detect_cube()
-    
-            if result is not None:
-                cx, cy, area = result["cx"], result["cy"], result["area"]
-                error_x = abs(cx - image_center_x)
-                error_y = abs(cy - image_center_y)
-    
-                if i % 10 == 0:
-                    print(f"Cube: model={result['model']} cx={round(cx,1)} cy={round(cy,1)} area={area}")
-    
-                if error_x < PICK_ZONE_X and error_y < PICK_ZONE_Y and area > MIN_CUBE_AREA:
-                    print("Cube is ready to pick!")
-                    return True
-            else:
-                if i % 20 == 0:
-                    print("No cube detected")
-    
-            if robot.step(TIME_STEP) == -1:
-                return False
-    
-        print("Timeout: cube did not enter pick zone")
-        return False
+    print("Waiting for white cube to enter pick zone...")
 
+    image_center_x = camera.getWidth() / 2
+    image_center_y = camera.getHeight() / 2
+
+    PICK_ZONE_X = 120
+    PICK_ZONE_Y = 120
+    MIN_CUBE_AREA = 150
+
+    for i in range(max_steps):
+        result, max_brightness, brightest_pixel = detect_white_cube()
+
+        if result is not None:
+            cx, cy, area = result
+
+            error_x = abs(cx - image_center_x)
+            error_y = abs(cy - image_center_y)
+
+            if i % 10 == 0:
+                print(
+                    "Cube:",
+                    "cx =", round(cx, 1),
+                    "cy =", round(cy, 1),
+                    "area =", area,
+                    "error_x =", round(error_x, 1),
+                    "error_y =", round(error_y, 1)
+                )
+
+            if error_x < PICK_ZONE_X and error_y < PICK_ZONE_Y and area > MIN_CUBE_AREA:
+                print("Cube is ready to pick!")
+                print("Final cx:", round(cx, 1), "cy:", round(cy, 1), "area:", area)
+                return True
+
+        else:
+            if i % 20 == 0:
+                print("No white cube detected")
+
+        if robot.step(TIME_STEP) == -1:
+            return False
+
+    print("Timeout: cube did not enter pick zone")
+    return False
     
 def preview_and_detect_cube(n_steps=300):
     print("Preview and detect white cube...")

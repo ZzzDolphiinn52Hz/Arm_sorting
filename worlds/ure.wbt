@@ -10,7 +10,6 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/universal_robots/protos/UR5e.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/conveyors/protos/ConveyorBelt.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/containers/protos/PlasticCrate.proto"
-EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/nvidia/jetbot/protos/JetBotRaspberryPiCamera.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/Floor.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/Parquetry.proto"
 
@@ -34,8 +33,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.31130086555439807 -0.3147253910899596 0.8966826078988901 4.614442402578416
-  position -0.25232625595493247 4.382707680097831 5.188550304358673
+  orientation -0.3177256941717621 -0.29650793864354047 0.9006294607575472 4.5394901683687365
+  position 2.6177912535108945 3.337720500549267 4.495791044506915
   exposure 1.7
   follow "UR5e:shoulder_link:upper_arm_link:forearm_link:wrist_1_link:wrist_2_link:wrist_3_link:solid"
 }
@@ -104,11 +103,15 @@ UR5e {
     DEF TCP Solid {
       name "solid(1)"
     }
-    JetBotRaspberryPiCamera {
+    Camera {
       translation 0.01 0.1 0.02
       rotation 0 0 1 1.5708003061004252
       fieldOfView 2.2
+      width 1280
+      height 720
       far 2
+      recognition Recognition {
+      }
     }
     Robotiq3fGripper {
     }
@@ -125,7 +128,79 @@ ConveyorBelt {
   }
   borderThickness 0.0001
   borderHeight 0
-  speed 0.05
+  speed 0.1
+}
+DEF CUBE_1 Solid {
+  translation 2.56106 -0.740165 0.624869
+  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 0 1
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "CUBE_1(4)"
+  boundingObject USE box
+  physics DEF physic Physics {
+    mass 1.2
+  }
+  recognitionColors [
+    1 1 1
+  ]
+}
+DEF CUBE_1 Solid {
+  translation 2.41951 -0.583283 0.624869
+  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 1 0 0
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "CUBE_1(3)"
+  boundingObject USE box
+  physics DEF physic Physics {
+    mass 1.2
+  }
+  recognitionColors [
+    1 1 1
+  ]
+}
+DEF CUBE_1 Solid {
+  translation 2.31565 -0.796594 0.624869
+  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 1 0 0
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "CUBE_1(2)"
+  boundingObject USE box
+  physics DEF physic Physics {
+    mass 1.2
+  }
+  recognitionColors [
+    1 1 1
+  ]
 }
 Solid {
   translation -0.964355 -3.36574 0.69
@@ -252,6 +327,7 @@ DEF CUBE_1 Solid {
   children [
     Shape {
       appearance PBRAppearance {
+        baseColor 1 0 0
         roughness 1
         metalness 0
       }
@@ -265,13 +341,17 @@ DEF CUBE_1 Solid {
   physics DEF physic Physics {
     mass 1.2
   }
+  recognitionColors [
+    1 1 1
+  ]
 }
 DEF CUBE_1 Solid {
-  translation 4.17702 -0.667643 0.624869
+  translation 1.61127 -0.653292 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
       appearance PBRAppearance {
+        baseColor 0 0 1
         roughness 1
         metalness 0
       }
@@ -285,6 +365,9 @@ DEF CUBE_1 Solid {
   physics DEF physic Physics {
     mass 1.2
   }
+  recognitionColors [
+    1 1 1
+  ]
 }
 Solid {
   translation 1.61924 -1.01393 0.5986
