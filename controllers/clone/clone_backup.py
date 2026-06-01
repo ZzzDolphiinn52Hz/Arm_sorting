@@ -49,8 +49,8 @@ while robot.step(TIME_STEP) != -1:
 
     if tracked_pan is None:
         continue  # Nothing found — restart loop
-        '''
-    '''    
+
+'''    
     # 4. Descend and pick while tracking in real time
     camera_utils.dynamic_descend_and_pick(
         move_ur_to_fn=motion.move_ur_to,
@@ -87,4 +87,4 @@ while robot.step(TIME_STEP) != -1:
 
     # Back to home for next cycle
     motion.goto_pose(poses.HOME, steps=100)
-
+'''
