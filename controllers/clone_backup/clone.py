@@ -160,7 +160,6 @@ while robot.step(TIME_STEP) != -1:
     print(f"[IK TEST] q_above: {[round(float(v), 4) for v in q_above]}")
     print(f"[IK TEST] q_down : {[round(float(v), 4) for v in q_down]}")
 
-
     # 5. Đi tới vị trí phía trên cube
     ok = motion.goto_pose(q_above, steps=100)
 

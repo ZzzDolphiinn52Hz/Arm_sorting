@@ -15,7 +15,6 @@ _time_step  = None
 _ur_motors  = []
 _ur_sensors = []
 
-
 def init(robot, time_step):
     """Call once from the main controller after creating the Supervisor."""
     global _robot, _time_step, _ur_motors, _ur_sensors
@@ -277,6 +276,253 @@ def numerical_jacobian_position(q, eps=1e-4):
     return J
 
 
+def fk_rotation(q):
+    """
+    Lấy ma trận hướng 3x3 của flange trong hệ Base từ FK.
+    Mỗi cột của R lần lượt là trục X, Y, Z của flange biểu diễn trong hệ Base.
+    """
+    T = forward_kinematics(q)
+    return T[0:3, 0:3]
+
+
+def _normalize(v, eps=1e-9):
+    v = np.array(v, dtype=float)
+    n = np.linalg.norm(v)
+    if n < eps:
+        return v
+    return v / n
+
+
+def rotation_vector_from_matrix(R):
+    """
+    Đổi ma trận quay nhỏ R thành rotation vector [rx, ry, rz].
+    Vector này dùng để mô tả sai số hướng trong IK.
+    """
+    cos_angle = (np.trace(R) - 1.0) / 2.0
+    cos_angle = np.clip(cos_angle, -1.0, 1.0)
+    angle = np.arccos(cos_angle)
+
+    vee = np.array([
+        R[2, 1] - R[1, 2],
+        R[0, 2] - R[2, 0],
+        R[1, 0] - R[0, 1]
+    ])
+
+    if angle < 1e-6:
+        return 0.5 * vee
+
+    return (angle / (2.0 * np.sin(angle))) * vee
+
+
+def orientation_error(R_current, R_target):
+    """
+    Sai số hướng từ R_current tới R_target, biểu diễn trong hệ Base.
+    """
+    R_err = R_target @ R_current.T
+    return rotation_vector_from_matrix(R_err)
+
+
+def numerical_jacobian_pose(q, eps=1e-4):
+    """
+    Tính Jacobian pose 6x6 bằng sai phân hữu hạn từ FK.
+    3 hàng đầu: vận tốc tuyến tính của flange.
+    3 hàng cuối: vận tốc góc của flange.
+    """
+    q = np.array(q, dtype=float)
+    T0 = forward_kinematics(q)
+    p0 = T0[0:3, 3]
+    R0 = T0[0:3, 0:3]
+
+    J = np.zeros((6, 6))
+
+    for i in range(6):
+        q_eps = q.copy()
+        q_eps[i] += eps
+
+        T_eps = forward_kinematics(q_eps)
+        p_eps = T_eps[0:3, 3]
+        R_eps = T_eps[0:3, 0:3]
+
+        J[0:3, i] = (p_eps - p0) / eps
+
+        # dR là lượng quay rất nhỏ từ R0 sang R_eps.
+        dR = R_eps @ R0.T
+        J[3:6, i] = rotation_vector_from_matrix(dR) / eps
+
+    return J
+
+
+def make_gripper_down_rotation(seed_q=None, flange_axis="z"):
+    """
+    Tạo hướng mục tiêu để trục tiếp cận của gripper vuông góc mặt conveyor.
+
+    Mặc định flange_axis="z": trục +Z của flange/gripper chĩa thẳng xuống conveyor.
+    Nếu chạy thử thấy gripper bị lật 180 độ, đổi thành flange_axis="-z".
+
+    Vì mặt conveyor nằm ngang nên pháp tuyến mặt conveyor là +Z,
+    hướng tiếp cận để gắp từ trên xuống là -Z trong hệ Base.
+    """
+    if seed_q is None:
+        seed_q = get_current_joint_positions()
+
+    R_seed = fk_rotation(seed_q)
+
+    down_base = np.array([0.0, 0.0, -1.0])
+
+    if flange_axis == "z":
+        z_axis = down_base
+    elif flange_axis == "-z":
+        z_axis = -down_base
+    else:
+        raise ValueError("flange_axis hiện hỗ trợ 'z' hoặc '-z'.")
+
+    # Giữ yaw gần seed bằng cách lấy trục X hiện tại chiếu xuống mặt phẳng ngang.
+    x_ref = R_seed[:, 0]
+    x_axis = x_ref - np.dot(x_ref, z_axis) * z_axis
+
+    # Nếu trục X seed gần song song với z_axis, dùng trục Y làm hướng tham chiếu.
+    if np.linalg.norm(x_axis) < 1e-6:
+        x_ref = R_seed[:, 1]
+        x_axis = x_ref - np.dot(x_ref, z_axis) * z_axis
+
+    # Trường hợp xấu cuối cùng, dùng X của Base.
+    if np.linalg.norm(x_axis) < 1e-6:
+        x_axis = np.array([1.0, 0.0, 0.0])
+
+    x_axis = _normalize(x_axis)
+    y_axis = np.cross(z_axis, x_axis)
+    y_axis = _normalize(y_axis)
+
+    # Bảo đảm hệ trục tay phải: x cross y = z.
+    x_axis = np.cross(y_axis, z_axis)
+    x_axis = _normalize(x_axis)
+
+    R_target = np.column_stack((x_axis, y_axis, z_axis))
+    return R_target
+
+
+def inverse_kinematics_pose(
+    target_pos_base,
+    target_R_base_flange,
+    seed_q=None,
+    max_iters=200,
+    pos_tolerance=0.002,
+    ori_tolerance=0.025,
+    damping=0.06,
+    max_step=0.06,
+    position_weight=1.0,
+    orientation_weight=0.8,
+    stay_near_seed=0.004
+):
+    """
+    IK số theo cả vị trí + hướng flange.
+
+    target_pos_base: [x, y, z] mục tiêu trong hệ Base robot.
+    target_R_base_flange: ma trận hướng 3x3 mong muốn của flange trong hệ Base.
+    """
+    if seed_q is None:
+        q = np.array(get_current_joint_positions(), dtype=float)
+    else:
+        q = np.array(seed_q, dtype=float)
+
+    seed = q.copy()
+    target_pos = np.array(target_pos_base, dtype=float)
+    target_R = np.array(target_R_base_flange, dtype=float)
+
+    for it in range(max_iters):
+        T = forward_kinematics(q)
+        current_pos = T[0:3, 3]
+        current_R = T[0:3, 0:3]
+
+        pos_error = target_pos - current_pos
+        ori_error = orientation_error(current_R, target_R)
+
+        pos_norm = np.linalg.norm(pos_error)
+        ori_norm = np.linalg.norm(ori_error)
+
+        if pos_norm < pos_tolerance and ori_norm < ori_tolerance:
+            print(f"[IK-POSE] Success at iter {it}, pos_error = {round(pos_norm, 6)} m, ori_error = {round(np.degrees(ori_norm), 3)} deg")
+            return q.tolist()
+
+        J = numerical_jacobian_pose(q)
+        J_weighted = J.copy()
+        J_weighted[0:3, :] *= position_weight
+        J_weighted[3:6, :] *= orientation_weight
+
+        error = np.concatenate((
+            position_weight * pos_error,
+            orientation_weight * ori_error
+        ))
+
+        # Damped Least Squares cho pose 6D.
+        A = J_weighted @ J_weighted.T + (damping ** 2) * np.eye(6)
+        dq = J_weighted.T @ np.linalg.solve(A, error)
+
+        # Giữ nghiệm gần seed để tránh chọn nghiệm cổ tay quá lạ.
+        dq += stay_near_seed * (seed - q)
+
+        dq_norm = np.linalg.norm(dq)
+        if dq_norm > max_step:
+            dq = dq / dq_norm * max_step
+
+        q = clamp_q(q + dq)
+
+    T = forward_kinematics(q)
+    final_pos_error = np.linalg.norm(target_pos - T[0:3, 3])
+    final_ori_error = np.linalg.norm(orientation_error(T[0:3, 0:3], target_R))
+    print(f"[IK-POSE] Failed. pos_error = {round(final_pos_error, 6)} m, ori_error = {round(np.degrees(final_ori_error), 3)} deg")
+    return None
+
+
+def inverse_kinematics_downward(
+    target_pos_base,
+    seed_q=None,
+    flange_axis="z",
+    **kwargs
+):
+    """
+    IK cho thao tác gắp từ trên xuống: flange tới đúng vị trí và gripper vuông góc conveyor.
+
+    flange_axis="z"  : trục +Z flange/gripper chĩa xuống.
+    flange_axis="-z" : trục -Z flange/gripper chĩa xuống.
+    """
+    if seed_q is None:
+        seed_q = get_current_joint_positions()
+
+    target_R = make_gripper_down_rotation(seed_q=seed_q, flange_axis=flange_axis)
+    return inverse_kinematics_pose(
+        target_pos_base=target_pos_base,
+        target_R_base_flange=target_R,
+        seed_q=seed_q,
+        **kwargs
+    )
+
+
+def debug_check_gripper_down(q, flange_axis="z"):
+    """
+    Kiểm tra trục tiếp cận của gripper có chĩa thẳng xuống conveyor hay chưa.
+    Góc càng gần 0 độ càng tốt.
+    """
+    R = fk_rotation(q)
+    if flange_axis == "z":
+        approach_axis = R[:, 2]
+    elif flange_axis == "-z":
+        approach_axis = -R[:, 2]
+    else:
+        raise ValueError("flange_axis hiện hỗ trợ 'z' hoặc '-z'.")
+
+    desired_down = np.array([0.0, 0.0, -1.0])
+    dot_val = np.clip(np.dot(_normalize(approach_axis), desired_down), -1.0, 1.0)
+    angle_deg = np.degrees(np.arccos(dot_val))
+
+    print("\n=== [CHECK GRIPPER ORIENTATION] ===")
+    print(f"Approach axis base: {[round(v, 4) for v in approach_axis]}")
+    print(f"Desired down axis : {[0.0, 0.0, -1.0]}")
+    print(f"Angle to vertical : {round(angle_deg, 3)} deg")
+
+    return angle_deg
+
+
 def inverse_kinematics_position(
     target_pos_base,
     seed_q=None,
@@ -330,14 +576,7 @@ def inverse_kinematics_position(
     print(f"[IK] Failed. Final error = {round(final_error, 6)} m")
     return None
 
-"""
-q hiện tại
-→ FK tính vị trí TCP hiện tại
-→ so với target cube
-→ tính Jacobian bằng FK
-→ cập nhật q
-→ lặp đến khi TCP tới target
-"""
+
 def debug_check_fk(webots_position, webots_orientation=None):
     """
     HAM KIEM TRA BUOC 1: Doi chieu giua FK tu tinh va toa do thuc te cua Webots.
