@@ -63,31 +63,46 @@ def smooth_move_ur_to(target_q, steps=100):
 
     for i in range(steps + 1):
         ratio = i / steps
-        q = [start + ratio * (target - start)
-             for start, target in zip(start_q, target_q)]
+        q = [
+            start + ratio * (target - start)
+            for start, target in zip(start_q, target_q)
+        ]
+
         move_ur_to(q)
+
         if _robot.step(_time_step) == -1:
             return False
 
     return True
 
 
-def wait_until_reached(target_q, tolerance=0.02, max_steps=300):
+def wait_until_reached(target_q, tolerance=0.04, max_steps=500):
     """Spin the sim until all joints are within tolerance of target_q."""
     for _ in range(max_steps):
         current_q = get_current_joint_positions()
         errors = [abs(c - t) for c, t in zip(current_q, target_q)]
+
         if max(errors) < tolerance:
             return True
+
         if _robot.step(_time_step) == -1:
             return False
+
+    print(f"[MOTION WARNING] wait_until_reached timeout. Max joint error = {round(max(errors), 5)}")
     return False
 
 
 def goto_pose(target_q, steps=100, tolerance=0.02):
-    """Smooth move then wait until physically reached."""
-    smooth_move_ur_to(target_q, steps=steps)
-    wait_until_reached(target_q, tolerance=tolerance)
+    """
+    Smooth move then wait until physically reached.
+    Return True if reached, False otherwise.
+    """
+    ok = smooth_move_ur_to(target_q, steps=steps)
+
+    if not ok:
+        return False
+
+    return wait_until_reached(target_q, tolerance=tolerance)
 
 
 # ------------------------------------------------------------------
@@ -154,11 +169,12 @@ def forward_kinematics(q):
         T = T @ _dh_matrix(alpha, a, d, theta)
     return T
 
+"""
 def forward_kinematics_world(q):
-    """
-    HÀM ĐÃ SỬA: Tính FK và chuyển sang hệ tọa độ Webots World-Frame chính xác.
-    Sửa lỗi đảo trục X, Y bằng ma trận định hướng Rz(+pi/2) và bù sai lệch cao độ Z.
-    """
+    
+    # Tính FK và chuyển sang hệ tọa độ Webots World-Frame chính xác.
+    # Đảo trục X, Y bằng ma trận định hướng Rz(+pi/2) và bù sai lệch cao độ Z.
+    
     # 1. Cấu hình chính xác ma trận chuyển đổi từ Base sang World (T_world_base)
     # Xoay căn chỉnh hệ trục để triệt tiêu lỗi đối xứng gương [X, Y] -> [-X, -Y]
     T_world_base = np.array([
@@ -182,8 +198,146 @@ def forward_kinematics_world(q):
     
     # 4. Trả về ma trận đồng nhất quy đổi hoàn toàn ra hệ tọa độ World của Webots
     return T_base_corrected @ T_flange_base
+"""
+
+def get_world_base_transform():
+    T_world_base = np.array([
+        [ 0, -1,  0,  0.000000 ],
+        [ 1,  0,  0,  0.000000 ],
+        [ 0,  0,  1,  0.364645 ],
+        [ 0,  0,  0,  1.000000 ]
+    ])
+
+    T_pedestal_offset = np.eye(4)
+    T_pedestal_offset[2, 3] = 0.2053
+
+    return T_world_base @ T_pedestal_offset
+
+def forward_kinematics_world(q):
+    T_world_base = get_world_base_transform()
+    T_base_flange = forward_kinematics(q)
+    return T_world_base @ T_base_flange
+
+def world_point_to_base(p_world):
+    """
+    Đổi 1 điểm từ World Webots về Base robot.
+    """
+    T_world_base = get_world_base_transform()
+    T_base_world = np.linalg.inv(T_world_base)
+
+    p_world_h = np.array([p_world[0], p_world[1], p_world[2], 1.0])
+    p_base_h = T_base_world @ p_world_h
+
+    return p_base_h[0:3]
 
 
+def base_point_to_world(p_base):
+    """
+    Đổi 1 điểm từ Base robot sang World Webots.
+    """
+    T_world_base = get_world_base_transform()
+
+    p_base_h = np.array([p_base[0], p_base[1], p_base[2], 1.0])
+    p_world_h = T_world_base @ p_base_h
+
+    return p_world_h[0:3]
+
+LOWER_LIMIT = np.array([-6.28, -6.28, -6.28, -6.28, -6.28, -6.28])
+UPPER_LIMIT = np.array([ 6.28,  6.28,  6.28,  6.28,  6.28,  6.28])
+
+
+def clamp_q(q):
+    return np.minimum(np.maximum(q, LOWER_LIMIT), UPPER_LIMIT)
+
+
+def fk_position(q):
+    """
+    Lấy vị trí flange trong hệ Base từ FK.
+    """
+    T = forward_kinematics(q)
+    return T[0:3, 3]
+
+
+def numerical_jacobian_position(q, eps=1e-4):
+    """
+    Tính Jacobian vị trí 3x6 bằng sai phân hữu hạn từ FK.
+    """
+    q = np.array(q, dtype=float)
+    p0 = fk_position(q)
+
+    J = np.zeros((3, 6))
+
+    for i in range(6):
+        q_eps = q.copy()
+        q_eps[i] += eps
+
+        p_eps = fk_position(q_eps)
+        J[:, i] = (p_eps - p0) / eps
+
+    return J
+
+
+def inverse_kinematics_position(
+    target_pos_base,
+    seed_q=None,
+    max_iters=120,
+    tolerance=0.002,
+    damping=0.04,
+    max_step=0.08,
+    stay_near_seed=0.01
+):
+    """
+    IK số theo vị trí.
+    target_pos_base: [x, y, z] mục tiêu trong hệ Base robot.
+    seed_q: bộ góc khởi tạo, nên dùng PICK_ABOVE hoặc q hiện tại.
+    """
+
+    if seed_q is None:
+        q = np.array(get_current_joint_positions(), dtype=float)
+    else:
+        q = np.array(seed_q, dtype=float)
+
+    seed = q.copy()
+    target = np.array(target_pos_base, dtype=float)
+
+    for it in range(max_iters):
+        current_pos = fk_position(q)
+        error = target - current_pos
+        error_norm = np.linalg.norm(error)
+
+        if error_norm < tolerance:
+            print(f"[IK] Success at iter {it}, error = {round(error_norm, 6)} m")
+            return q.tolist()
+
+        J = numerical_jacobian_position(q)
+
+        # Damped Least Squares:
+        # dq = J.T * inv(J*J.T + lambda^2 I) * error
+        A = J @ J.T + (damping ** 2) * np.eye(3)
+        dq = J.T @ np.linalg.solve(A, error)
+
+        # Giữ nghiệm gần seed để tránh cổ tay xoay lung tung
+        dq += stay_near_seed * (seed - q)
+
+        # Giới hạn bước nhảy mỗi vòng lặp
+        dq_norm = np.linalg.norm(dq)
+        if dq_norm > max_step:
+            dq = dq / dq_norm * max_step
+
+        q = clamp_q(q + dq)
+
+    final_error = np.linalg.norm(target - fk_position(q))
+    print(f"[IK] Failed. Final error = {round(final_error, 6)} m")
+    return None
+
+"""
+q hiện tại
+→ FK tính vị trí TCP hiện tại
+→ so với target cube
+→ tính Jacobian bằng FK
+→ cập nhật q
+→ lặp đến khi TCP tới target
+"""
 def debug_check_fk(webots_position, webots_orientation=None):
     """
     HAM KIEM TRA BUOC 1: Doi chieu giua FK tu tinh va toa do thuc te cua Webots.

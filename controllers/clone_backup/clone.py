@@ -1,13 +1,10 @@
 from controller import Supervisor
 
+import numpy as np
 import poses
 import gripper
 import motion
 import camera_utils
-
-# =========================
-# INIT
-# =========================
 
 TIME_STEP = 32
 robot = Supervisor()
@@ -16,75 +13,180 @@ motion.init(robot, TIME_STEP)
 gripper.init(robot, TIME_STEP)
 camera_utils.init(robot, TIME_STEP, camera_name="camera")
 
+end_effector_node = robot.getFromDef("tool_slot")
+if end_effector_node is None:
+    end_effector_node = robot.getSelf().getFromProtoDef("wrist_3_link")
+
+cube_node = robot.getFromDef("cube2")
+
+
+def is_valid_vector(v, size=None):
+    if v is None:
+        return False
+
+    arr = np.array(v, dtype=float)
+
+    if size is not None and arr.size != size:
+        return False
+
+    return np.all(np.isfinite(arr))
+
+
+def make_pick_targets_from_cube(cube_world):
+    """
+    Tạo 2 target cho flange/TCP trong hệ World:
+    - p_above_world: điểm đứng trên cube
+    - p_down_world : điểm thấp hơn để chuẩn bị gắp
+
+    Các offset này sẽ cần chỉnh theo gripper thật của bạn.
+    """
+    PICK_DOWN_Z_OFFSET = 0.12
+    PICK_ABOVE_EXTRA_Z = 0.10
+
+    p_down_world = np.array([
+        cube_world[0],
+        cube_world[1],
+        cube_world[2] + PICK_DOWN_Z_OFFSET
+    ])
+
+    p_above_world = np.array([
+        cube_world[0],
+        cube_world[1],
+        cube_world[2] + PICK_DOWN_Z_OFFSET + PICK_ABOVE_EXTRA_Z
+    ])
+
+    return p_above_world, p_down_world
+
+
 # =========================
-# MAIN LOOP
+# STARTUP / WARM-UP
 # =========================
+
+# Cho sensor/motor/camera cập nhật vài bước đầu để tránh NaN
+for _ in range(10):
+    if robot.step(TIME_STEP) == -1:
+        quit()
+
+# Command HOME bằng lệnh trực tiếp trước, không nội suy
+motion.move_ur_to(poses.HOME)
+motion.wait_steps(50)
+
+# Mở gripper
+gripper.open_gripper()
+motion.wait_steps(20)
+
+# Đưa robot về vùng camera nhìn thấy băng chuyền/cube
+motion.goto_pose(poses.PICK_ABOVE, steps=80)
+motion.wait_steps(20)
+
+print("=== IK TEST START ===")
+
+step_count = 0
+
+# =========================
+# IK TEST LOOP
+# =========================
+
 while robot.step(TIME_STEP) != -1:
 
-    # 1. Go home
-    motion.goto_pose(poses.HOME, steps=50)
+    current_q = motion.get_current_joint_positions()
 
-    # 2. Open gripper
-    gripper.open_gripper()
-    motion.wait_steps(10)
+    if not is_valid_vector(current_q, size=6):
+        print(f"[IK TEST] current_q invalid: {current_q}")
+        continue
 
-    # 3. Move to waiting position above conveyor
-    motion.goto_pose(poses.PICK_ABOVE, steps=50)
+    # FK hiện tại: Base <- Flange
+    T_base_flange = motion.forward_kinematics(current_q)
 
-    
-    # 3.1 Track cube until aligned
-    tracked_pan = camera_utils.wait_until_cube_ready(
-        move_ur_to_fn=motion.move_ur_to,
-        get_joints_fn=motion.get_current_joint_positions,
-        max_steps=500
+    # Transform cố định: World <- Base
+    T_world_base = motion.get_world_base_transform()
+
+    # Lấy cube trong World bằng camera + calibration đã sửa đúng
+    cube_world = camera_utils.get_cube_world_position(
+        T_base_flange,
+        T_world_base
     )
-    
-    # 3.1 Chạy vòng lặp quét camera nhưng KHÔNG cho robot di chuyển
-    tracked_pan = camera_utils.wait_until_cube_ready(
-        move_ur_to_fn=lambda q: None,  # MẸO: Hàm rỗng này sẽ "nuốt" lệnh di chuyển, giữ robot đứng yên!
-        get_joints_fn=motion.get_current_joint_positions,
-        max_steps=500
-    )
-    
 
-    if tracked_pan is None:
-        continue  # Nothing found — restart loop
-        '''
-    '''    
-    # 4. Descend and pick while tracking in real time
-    camera_utils.dynamic_descend_and_pick(
-        move_ur_to_fn=motion.move_ur_to,
-        get_joints_fn=motion.get_current_joint_positions,
-        pick_down_pose=poses.PICK_DOWN,
-        steps=25
+    if cube_world is None:
+        if step_count % 20 == 0:
+            print("[IK TEST] Camera chưa thấy cube...")
+        step_count += 1
+        continue
+
+    if not is_valid_vector(cube_world, size=3):
+        print(f"[IK TEST] cube_world invalid: {cube_world}")
+        continue
+
+    print(f"\n[IK TEST] Cube World: {[round(float(v), 4) for v in cube_world]}")
+
+    # 1. Tạo target trong World
+    p_above_world, p_down_world = make_pick_targets_from_cube(cube_world)
+
+    # 2. Đổi target từ World -> Base
+    p_above_base = motion.world_point_to_base(p_above_world)
+    p_down_base = motion.world_point_to_base(p_down_world)
+
+    if not is_valid_vector(p_above_base, size=3):
+        print(f"[IK TEST] p_above_base invalid: {p_above_base}")
+        continue
+
+    if not is_valid_vector(p_down_base, size=3):
+        print(f"[IK TEST] p_down_base invalid: {p_down_base}")
+        continue
+
+    print(f"[IK TEST] Target above base: {[round(float(v), 4) for v in p_above_base]}")
+    print(f"[IK TEST] Target down base : {[round(float(v), 4) for v in p_down_base]}")
+
+    # 3. IK cho điểm above
+    q_above = motion.inverse_kinematics_position(
+        target_pos_base=p_above_base,
+        seed_q=poses.PICK_ABOVE
     )
-    
-    # 5. Close gripper
+
+    if not is_valid_vector(q_above, size=6):
+        print(f"[IK TEST] Không tìm được q_above hoặc q_above invalid: {q_above}")
+        continue
+
+    # 4. IK cho điểm down, lấy q_above làm seed
+    q_down = motion.inverse_kinematics_position(
+        target_pos_base=p_down_base,
+        seed_q=q_above
+    )
+
+    if not is_valid_vector(q_down, size=6):
+        print(f"[IK TEST] Không tìm được q_down hoặc q_down invalid: {q_down}")
+        continue
+
+    print(f"[IK TEST] q_above: {[round(float(v), 4) for v in q_above]}")
+    print(f"[IK TEST] q_down : {[round(float(v), 4) for v in q_down]}")
+
+
+    # 5. Đi tới vị trí phía trên cube
+    ok = motion.goto_pose(q_above, steps=100)
+
+    if not ok:
+        print("[IK TEST] goto_pose(q_above) failed")
+        continue
+
+    print("[IK TEST] Đã tới q_above.")
+
+    motion.wait_steps(20)
+
+    # 6. Hạ xuống vị trí gắp thử, chưa đóng gripper
+    ok = motion.goto_pose(q_down, steps=60)
+
+    if not ok:
+        print("[IK TEST] goto_pose(q_down) failed")
+        continue
+
+    motion.wait_steps(20)
+
     gripper.close_gripper()
     motion.wait_steps(80)
 
-    # 6. Lift straight up using the actual pan angle at the moment of grasp
-    current_pan = motion.get_current_joint_positions()[0]
-    dynamic_pick_above = list(poses.PICK_ABOVE)
-    dynamic_pick_above[0] = current_pan
-    motion.goto_pose(dynamic_pick_above, steps=30)
+    motion.goto_pose(q_above, steps=80)
 
-    # 7. Check whether pick succeeded
-    if camera_utils.check_if_picked_successfully(wait_steps_fn=motion.wait_steps):
-        # Success path: carry to bin and drop
-        motion.goto_pose(poses.SAFE_MID,   steps=80)
-        motion.goto_pose(poses.BIN_ABOVE,  steps=100)
-        motion.goto_pose(poses.BIN_DOWN,   steps=80)
+    print("[IK TEST] Đã gắp thử và nâng lên.")
+    break
 
-        gripper.open_gripper()
-        motion.wait_steps(80)
-
-        motion.goto_pose(poses.BIN_ABOVE,  steps=80)
-        motion.goto_pose(poses.SAFE_MID,   steps=80)
-    else:
-        # Miss path: skip bin run, go straight back home
-        print("Pick missed. Returning HOME for next target...")
-
-    # Back to home for next cycle
-    motion.goto_pose(poses.HOME, steps=100)
 

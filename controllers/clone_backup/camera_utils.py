@@ -8,43 +8,63 @@ _robot      = None
 _time_step  = None
 _camera     = None
 
-
-
-def get_cube_in_base_frame(pos_3d_camera, T_flange_base):
+def get_cube_in_base_frame(pos_3d_camera, T_base_flange):
     """
-    HÀM CHUẨN HÓA BƯỚC 2 (ĐÃ ĐỒNG BỘ TRỤC X-Z):
-    Ánh xạ chính xác hệ trục dựa trên quy luật biến thiên thực tế của Webots Camera.
+    Convert cube position from Camera frame -> Flange frame -> Base frame.
+
+    pos_3d_camera: [x, y, z] from Webots Camera Recognition
+    T_base_flange: FK matrix, Base <- Flange
     """
+
     x_c, y_c, z_c = pos_3d_camera
-    
-    # Tạo ma trận dịch chuyển trực tiếp dựa trên quy luật hình học:
-    # 1. Trục Y đã đúng, giữ nguyên ánh xạ từ camera.
-    # 2. Hoán đổi ngược dấu trục X và Z để sửa lỗi chéo hệ trục.
-    T_flange_cube_direct = np.identity(4)
-    
-    T_flange_cube_direct[0, 3] = x_c - 0.01      
-    T_flange_cube_direct[1, 3] = -y_c + 0.1         
-    T_flange_cube_direct[2, 3] = z_c - 0.02   
-    
-    # Nhân với ma trận động học thuận nội tại của robot
-    T_base_cube = T_flange_base @ T_flange_cube_direct
-    pos_3d_base = T_base_cube[0:3, 3]
-    
-    # 3. Khử sai số tĩnh toàn cục (Static Offset Calibration)
-    # Lượng bù trừ này giúp đưa tọa độ toán về trùng khớp hoàn toàn với mắt thần Webots
-    pos_3d_base[0] += 0.4024   
-    pos_3d_base[1] -= 0.3088  
-    pos_3d_base[2] += 0.0157
 
-    return T_base_cube[0:3, 3]
+    # TODO: cần calibrate đúng ma trận này theo camera thật trong Webots.
+    T_FLANGE_CAMERA = np.array([
+    [ 7.0000e-06, -1.0000e+00,  1.7000e-05,  9.2760e-03 ],
+    [ 1.2000e-05, -1.7000e-05, -1.0000e+00, -2.0070e-02 ],
+    [ 1.0000e+00,  7.0000e-06,  1.2000e-05, 6.0071e-02 ],
+    [ 0.0 , 0.0 , 0.0 , 1.0 ],
+    ])
+
+    p_camera = np.array([x_c, y_c, z_c, 1.0])
+
+    p_base = T_base_flange @ T_FLANGE_CAMERA @ p_camera
+
+    return p_base[0:3]
+
+def get_cube_base_position(T_base_flange):
+    """
+    Trả về vị trí cube trong hệ Base robot.
+    """
+    cube_data = detect_cube()
+    if cube_data is None:
+        return None
+
+    pos_camera = cube_data["position_3d"]
+    cube_base = get_cube_in_base_frame(pos_camera, T_base_flange)
+
+    return cube_base
 
 
-def debug_check_camera_transform(pos_3d_camera, T_flange_base, T_world_base, supervisor_cube_node):
+def get_cube_world_position(T_base_flange, T_world_base):
+    """
+    Trả về vị trí cube trong hệ World Webots.
+    """
+    cube_base = get_cube_base_position(T_base_flange)
+    if cube_base is None:
+        return None
+
+    p_base = np.array([cube_base[0], cube_base[1], cube_base[2], 1.0])
+    p_world = T_world_base @ p_base
+
+    return p_world[0:3]
+
+def debug_check_camera_transform(pos_3d_camera, T_base_flange, T_world_base, supervisor_cube_node):
     """
     HÀM KIỂM TRA BƯỚC 2: Đối chiếu tọa độ vật tính từ Ma trận Camera sang World với tọa độ thực tế.
     """
     # Tính vị trí vật đối với hệ trục Base Robot
-    cube_in_base = get_cube_in_base_frame(pos_3d_camera, T_flange_base)
+    cube_in_base = get_cube_in_base_frame(pos_3d_camera, T_base_flange)
     
     # Chuyển tiếp tọa độ vật từ hệ Base sang hệ World của Webots để đối chứng với Supervisor
     T_base_cube = np.identity(4)

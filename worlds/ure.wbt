@@ -34,7 +34,7 @@ WorldInfo {
 }
 Viewpoint {
   orientation -0.36730096213446517 0.12340596058921105 0.9218790441842956 2.540875534495202
-  position 4.807680396982226 -2.969599968156817 5.741367547809559
+  position 5.319093905203594 -2.889290132109001 5.0632747976850325
   exposure 1.7
   follow "UR5e:shoulder_link:upper_arm_link:forearm_link:wrist_1_link:wrist_2_link:wrist_3_link:solid"
 }
@@ -103,7 +103,7 @@ UR5e {
     DEF TCP Solid {
       name "solid(1)"
     }
-    Camera {
+    DEF CAMERA_NODE Camera {
       translation 0.01 0.1 0.02
       rotation 0 0 1 1.5708003061004252
       fieldOfView 2.2
@@ -131,7 +131,7 @@ ConveyorBelt {
   speed 0.1
 }
 DEF CUBE_1 Solid {
-  translation 1.63946 -1.21858 0.624869
+  translation 1.28443 -0.58932 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -155,7 +155,7 @@ DEF CUBE_1 Solid {
   ]
 }
 DEF CUBE_1 Solid {
-  translation 1.48887 -1.24147 0.624869
+  translation 1.53822 -0.624259 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -179,7 +179,7 @@ DEF CUBE_1 Solid {
   ]
 }
 DEF CUBE_1 Solid {
-  translation 1.53959 -1.44302 0.624869
+  translation 2.17238 -0.565655 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -322,7 +322,7 @@ Solid {
   boundingObject USE box
 }
 DEF CUBE_1 Solid {
-  translation 1.48063 -1.08892 0.624869
+  translation 1.84906 -0.557861 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {

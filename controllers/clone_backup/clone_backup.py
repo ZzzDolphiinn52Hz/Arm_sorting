@@ -4,6 +4,7 @@ import poses
 import gripper
 import motion
 import camera_utils
+import numpy as np
 
 # =========================
 # INIT
@@ -16,12 +17,27 @@ motion.init(robot, TIME_STEP)
 gripper.init(robot, TIME_STEP)
 camera_utils.init(robot, TIME_STEP, camera_name="camera")
 
+"""
+# calibration hệ tọa độ camera
+camera_node = robot.getFromDef("CAMERA_NODE")
+
+def node_to_transform(node):
+    T = np.identity(4)
+    T[0:3, 0:3] = np.array(node.getOrientation()).reshape((3, 3))
+    T[0:3, 3] = np.array(node.getPosition())
+    return T
+
+if camera_node is None:
+    print("[ERROR] Không tìm thấy DEF CAMERA_NODE. Hãy đặt DEF cho Camera trong .wbt")
+    robot.simulationQuit(1)
+"""
+
 end_effector_node = robot.getFromDef("tool_slot")
 if end_effector_node is None:
-    # Phương án dự phòng nếu bạn chưa đặt DEF name: Lấy khâu cuối cùng trên mô hình cơ học
     end_effector_node = robot.getSelf().getFromProtoDef("wrist_3_link")
-
 cube_node = robot.getFromDef("cube2")
+
+
 
 # =========================
 # MAIN LOOP
@@ -33,23 +49,38 @@ while robot.step(TIME_STEP) != -1:
 
     # 2. Lấy các ma trận Động học thuận đã chuẩn hóa ở Bước 1
     current_q = motion.get_current_joint_positions()
-    T_flange_base = motion.forward_kinematics(current_q)       # Hệ Base
-    T_world_base = motion.forward_kinematics_world(current_q)            # Lấy ma trận Rz(pi/2) tịnh tiến Z đã sửa ở Bước 1
+    T_base_flange = motion.forward_kinematics(current_q)       # Hệ Base
+    T_world_base = motion.get_world_base_transform()           # Hệ world
     
+    """
+    # calibration hệ tọa độ camera
+    
+    T_world_flange = T_world_base @ T_base_flange
+    T_world_camera = node_to_transform(camera_node)
+
+    T_flange_camera = np.linalg.inv(T_world_flange) @ T_world_camera
+
+    print("\n=== T_FLANGE_CAMERA CALIBRATION ===")
+    print(np.round(T_flange_camera, 6))
+    """
+
     # 3. Đọc dữ liệu camera thời gian thực
     cube_data = camera_utils.detect_cube()
     if cube_data is not None:
         pos_camera = cube_data["position_3d"]  # Mảng [X, Y, Z] thô từ camera
         
         # Thực hiện kiểm tra Bước 2
-        camera_utils.debug_check_camera_transform(pos_camera, T_flange_base, T_world_base, cube_node)
-
-
+        camera_utils.debug_check_camera_transform(
+            pos_camera, 
+            T_base_flange,
+            T_world_base, 
+            cube_node
+        )
     
     # 2. Open gripper
     gripper.open_gripper()
     motion.wait_steps(10)
-
+    
     # 3. Move to waiting position above conveyor
     motion.goto_pose(poses.PICK_ABOVE, steps=50)
 
@@ -79,11 +110,11 @@ while robot.step(TIME_STEP) != -1:
         max_steps=500
     )
     
-
+    
     if tracked_pan is None:
         continue  # Nothing found — restart loop
 
-
+    
     # 4. Descend and pick while tracking in real time
     camera_utils.dynamic_descend_and_pick(
         move_ur_to_fn=motion.move_ur_to,
@@ -105,19 +136,19 @@ while robot.step(TIME_STEP) != -1:
     # 7. Check whether pick succeeded
     if camera_utils.check_if_picked_successfully(wait_steps_fn=motion.wait_steps):
         # Success path: carry to bin and drop
-        motion.goto_pose(poses.SAFE_MID,   steps=80)
-        motion.goto_pose(poses.BIN_ABOVE,  steps=100)
-        motion.goto_pose(poses.BIN_DOWN,   steps=80)
+        motion.goto_pose(poses.SAFE_MID,   steps=40)
+        motion.goto_pose(poses.BIN_ABOVE,  steps=40)
+        motion.goto_pose(poses.BIN_DOWN,   steps=40)
 
         gripper.open_gripper()
         motion.wait_steps(80)
 
-        motion.goto_pose(poses.BIN_ABOVE,  steps=80)
-        motion.goto_pose(poses.SAFE_MID,   steps=80)
+        motion.goto_pose(poses.BIN_ABOVE,  steps=40)
+        motion.goto_pose(poses.SAFE_MID,   steps=40)
     else:
         # Miss path: skip bin run, go straight back home
         print("Pick missed. Returning HOME for next target...")
 
     # Back to home for next cycle
-    motion.goto_pose(poses.HOME, steps=100)
-
+    motion.goto_pose(poses.HOME, steps=40)
+    
