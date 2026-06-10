@@ -444,20 +444,20 @@ def dynamic_pick_cube():
     print("[DYNAMIC] Pick động xong và đã nâng cube.")
 
     if camera_utils.check_if_picked_successfully(wait_steps_fn=motion.wait_steps):
-        motion.goto_pose(poses.SAFE_MID,   steps=25)
-        motion.goto_pose(poses.BIN_ABOVE,  steps=35)
-        motion.goto_pose(poses.BIN_DOWN,   steps=25)
+        motion.goto_pose(poses.SAFE_MID,   steps=15)
+        motion.goto_pose(poses.BIN_ABOVE,  steps=25)
+        motion.goto_pose(poses.BIN_DOWN,   steps=15)
 
         gripper.open_gripper()
 
-        motion.goto_pose(poses.BIN_ABOVE,  steps=25)
-        motion.goto_pose(poses.SAFE_MID,   steps=25)
+        motion.goto_pose(poses.BIN_ABOVE,  steps=15)
+        motion.goto_pose(poses.SAFE_MID,   steps=15)
     else:
         print("Pick missed. Returning HOME for next target...")
 
     gripper.open_gripper()
     reset_tracker()
-    motion.goto_pose(poses.PICK_ABOVE, steps=100)
+    motion.goto_pose(poses.PICK_ABOVE, steps=50)
     return True
 
 

@@ -374,7 +374,7 @@ def check_if_picked_successfully(wait_steps_fn):
     After lifting, verify that at least one cube is very close to the camera.
     This avoids a false miss when several other cubes remain visible on the belt.
     """
-    wait_steps_fn(10)
+    wait_steps_fn(5)
 
     detections = detect_cubes(target_model_name="cube")
     if not detections:
