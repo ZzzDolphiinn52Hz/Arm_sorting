@@ -1,5 +1,6 @@
 from controller import Supervisor
 
+import math
 import numpy as np
 
 import poses
@@ -18,195 +19,293 @@ motion.init(robot, TIME_STEP)
 gripper.init(robot, TIME_STEP)
 camera_utils.init(robot, TIME_STEP, camera_name="camera")
 
-# Nếu cần debug trực tiếp TCP/flange bằng Supervisor
 end_effector_node = robot.getFromDef("tool_slot")
 if end_effector_node is None:
     end_effector_node = robot.getSelf().getFromProtoDef("wrist_3_link")
 
-cube_node = robot.getFromDef("cube2")
-
 # Trục của flange/gripper cần ép vuông góc mặt conveyor.
-# Nếu chạy thử thấy gripper bị lật ngược hoặc vẫn nghiêng sai chiều,
-# đổi lần lượt: "-z", "x", "-x", "y", "-y" tùy cách bạn gắn gripper vào flange.
+# Bản motion_optimized hỗ trợ đủ: "z", "-z", "x", "-x", "y", "-y".
+# Nếu gripper vẫn nghiêng, đổi biến này trước, không cần sửa IK.
 GRIPPER_DOWN_AXIS = "z"
 
 
-def is_valid_vector(v, size=None):
-    if v is None:
-        return False
+# =========================
+# PICK GEOMETRY CONFIG
+# =========================
 
-    arr = np.array(v, dtype=float)
+CUBE_HALF_HEIGHT = 0.025
+PICK_CLEARANCE = 0.02
+ABOVE_CLEARANCE = 0.16
 
-    if size is not None and arr.size != size:
-        return False
+# TCP/tip offset expressed in FLANGE local frame, not base frame.
+# Đây là chỗ quan trọng để sửa lỗi "flange đúng nhưng gripper lệch".
+# Nếu đầu kẹp thật không nằm ngay dưới tâm flange, chỉnh X/Y ở đây.
+# Ví dụ bị lệch vào trong conveyor 2 cm thì thử [0.02, 0.0, 0.120]
+# hoặc [-0.02, 0.0, 0.120] tùy chiều thực tế.
+GRIPPER_TIP_OFFSET_FLANGE = np.array([0.000, 0.000, 0.120])
 
-    return np.all(np.isfinite(arr))
 
-
-def make_pick_targets_from_cube_base(cube_base):
-    """
-    Tạo target cho FLANGE trong hệ Base.
-    cube_base là tọa độ cube trong hệ Base robot.
-
-    Lưu ý:
-    - IK điều khiển flange, không điều khiển đầu gripper.
-    - Vì gripper dài xuống dưới flange, phải cộng thêm FLANGE_TO_GRIPPER_TIP.
-    """
-
-    # Cần chỉnh theo gripper thật của bạn
-    CUBE_HALF_HEIGHT = 0.025          # nếu cube cao 5 cm
-    FLANGE_TO_GRIPPER_TIP = 0.12       # khoảng cách flange -> đầu gripper, cần tune
-    PICK_CLEARANCE = 0.01             # khoảng hở khi xuống gắp
-    ABOVE_CLEARANCE = 0.16           # khoảng cách q_above so với q_down
-
-    cube_top_z = cube_base[2] + CUBE_HALF_HEIGHT
-
-    p_down_base = np.array([
-        cube_base[0],
-        cube_base[1],
-        cube_top_z + FLANGE_TO_GRIPPER_TIP + PICK_CLEARANCE
-    ])
-
-    p_above_base = np.array([
-        cube_base[0],
-        cube_base[1],
-        p_down_base[2] + ABOVE_CLEARANCE
-    ])
-
-    return p_above_base, p_down_base
 # =========================
 # DYNAMIC TRACKING CONFIG
 # =========================
 
 DT = TIME_STEP / 1000.0
 
-# Tùy tốc độ băng tải và tốc độ robot mà chỉnh.
-# Conveyor càng nhanh thì tăng LEAD_TIME.
-LEAD_TIME_ABOVE = 0.25
-LEAD_TIME_DOWN = 0.12
+LEAD_TIME_ABOVE = 0.28
+LEAD_TIME_DOWN = 0.14
 LEAD_TIME_CLOSE = 0.08
 
-MAX_JOINT_STEP = 0.075      # rad/step, tránh q nhảy quá gắt
-CUBE_ALPHA = 0.35           # lọc vị trí cube
-VEL_ALPHA = 0.25            # lọc vận tốc cube
-LOST_MAX_STEPS = 8
+MAX_JOINT_STEP = 0.070
+CUBE_ALPHA = 0.42
+VEL_ALPHA = 0.20
+LOST_MAX_STEPS = 12
+MAX_CUBE_SPEED = 0.70      # m/s, clamp noise when detector switches object
+MIN_CUBE_AREA = 80
+
+# Use a broad camera/pick lane first, then let IK decide reachability.
+# These numbers are intentionally less aggressive than the old hard skip.
+PICK_X_MIN = -1.35
+PICK_X_MAX = -0.25
+PICK_X_GOAL = -0.72
+PICK_Y_LIMIT = 0.60
+PICK_RADIUS_MAX = 0.98
+TOO_LATE_GRACE_STEPS = 18
+IK_FAIL_GRACE_STEPS = 35
+
+workspace = {
+    "x_min": PICK_X_MIN,
+    "x_max": PICK_X_MAX,
+    "x_goal": PICK_X_GOAL,
+    "y_limit": PICK_Y_LIMIT,
+    "r_max": PICK_RADIUS_MAX,
+}
 
 tracker = {
+    "id": None,
     "pos": None,
     "vel": np.zeros(3),
     "last_meas": None,
     "lost": 0,
+    "too_late_count": 0,
+    "ik_fail_count": 0,
 }
+
+
+# =========================
+# UTILS
+# =========================
+
+def is_valid_vector(v, size=None):
+    if v is None:
+        return False
+    arr = np.array(v, dtype=float)
+    if size is not None and arr.size != size:
+        return False
+    return np.all(np.isfinite(arr))
+
+
+def reset_tracker():
+    tracker["id"] = None
+    tracker["pos"] = None
+    tracker["vel"] = np.zeros(3)
+    tracker["last_meas"] = None
+    tracker["lost"] = 0
+    tracker["too_late_count"] = 0
+    tracker["ik_fail_count"] = 0
+    if hasattr(camera_utils, "reset_target_lock"):
+        camera_utils.reset_target_lock()
 
 
 def limit_joint_step(current_q, target_q, max_step=MAX_JOINT_STEP):
     current_q = np.array(current_q, dtype=float)
     target_q = np.array(target_q, dtype=float)
-
     dq = target_q - current_q
     dq = np.clip(dq, -max_step, max_step)
-
     return (current_q + dq).tolist()
 
 
+def clamp_velocity(v):
+    v = np.array(v, dtype=float)
+    speed = np.linalg.norm(v)
+    if speed > MAX_CUBE_SPEED:
+        v = v / speed * MAX_CUBE_SPEED
+    return v
+
+
+def make_pick_targets_from_cube_base(cube_base, seed_q=None):
+    """
+    Create FLANGE targets in Base frame from cube center in Base frame.
+
+    Correct formula:
+        p_tip_base = cube top + clearance
+        p_flange_base = p_tip_base - R_base_flange @ tip_offset_flange
+
+    This prevents side error when the gripper/TCP is not exactly at the flange
+    origin or when the flange is not perfectly vertical yet.
+    """
+    if seed_q is None:
+        seed_q = motion.get_current_joint_positions()
+
+    target_R = motion.make_gripper_down_rotation(
+        seed_q=seed_q,
+        flange_axis=GRIPPER_DOWN_AXIS,
+    )
+
+    cube_base = np.array(cube_base, dtype=float)
+    p_tip_down_base = np.array([
+        cube_base[0],
+        cube_base[1],
+        cube_base[2] + CUBE_HALF_HEIGHT + PICK_CLEARANCE,
+    ])
+
+    p_down_base = p_tip_down_base - target_R @ GRIPPER_TIP_OFFSET_FLANGE
+    p_above_base = p_down_base + np.array([0.0, 0.0, ABOVE_CLEARANCE])
+
+    return p_above_base, p_down_base, target_R
+
+
+def is_inside_broad_workspace(p):
+    x, y, _ = p
+    r = math.sqrt(x * x + y * y)
+    if abs(y) > PICK_Y_LIMIT:
+        return False, "out_y"
+    if r > PICK_RADIUS_MAX:
+        return False, "out_radius"
+    if x > PICK_X_MAX:
+        return False, "too_early"
+    if x < PICK_X_MIN:
+        return False, "too_late"
+    return True, "inside"
+
+
+# =========================
+# VISION TRACKER
+# =========================
+
 def update_cube_tracker():
     """
-    Cập nhật cube_base liên tục từ camera + FK.
-    Nếu camera mất cube vài step thì dùng vận tốc ước lượng để dự đoán tiếp.
+    Update one locked cube in base frame.
+    Multiple visible cubes are handled by choosing a target once, then keeping
+    its recognition id or nearest-neighbor track.
     """
     current_q = motion.get_current_joint_positions()
-
     if not is_valid_vector(current_q, size=6):
-        return None, False
+        return None, False, None
 
     T_base_flange = motion.forward_kinematics(current_q)
-    meas = camera_utils.get_cube_base_position(T_base_flange)
+
+    meas, candidate = camera_utils.get_selected_cube_base_position(
+        T_base_flange,
+        last_base=tracker["pos"],
+        target_model_name="cube",
+        min_area=MIN_CUBE_AREA,
+        workspace=workspace,
+        return_candidate=True,
+    )
 
     if is_valid_vector(meas, size=3):
         meas = np.array(meas, dtype=float)
+        candidate_id = candidate.get("id") if candidate is not None else None
 
-        if tracker["pos"] is None:
+        if tracker["id"] is None and candidate_id is not None:
+            tracker["id"] = candidate_id
+
+        if tracker["pos"] is None or tracker["last_meas"] is None:
             tracker["pos"] = meas
             tracker["vel"] = np.zeros(3)
         else:
-            raw_vel = (meas - tracker["last_meas"]) / DT
-            tracker["vel"] = (1.0 - VEL_ALPHA) * tracker["vel"] + VEL_ALPHA * raw_vel
-            tracker["pos"] = (1.0 - CUBE_ALPHA) * tracker["pos"] + CUBE_ALPHA * meas
+            jump = np.linalg.norm(meas - tracker["last_meas"])
+            if jump > 0.25:
+                # Detector probably switched to another cube. Reset velocity so
+                # prediction does not instantly mark it as too_late.
+                tracker["pos"] = meas
+                tracker["vel"] = np.zeros(3)
+            else:
+                raw_vel = clamp_velocity((meas - tracker["last_meas"]) / DT)
+                tracker["vel"] = (1.0 - VEL_ALPHA) * tracker["vel"] + VEL_ALPHA * raw_vel
+                tracker["pos"] = (1.0 - CUBE_ALPHA) * tracker["pos"] + CUBE_ALPHA * meas
 
         tracker["last_meas"] = meas
         tracker["lost"] = 0
-        return tracker["pos"], True
+        return tracker["pos"], True, candidate
 
-    # Nếu tạm mất cube, dự đoán theo vận tốc cũ
     if tracker["pos"] is not None and tracker["lost"] < LOST_MAX_STEPS:
         tracker["pos"] = tracker["pos"] + tracker["vel"] * DT
         tracker["lost"] += 1
-        return tracker["pos"], False
+        return tracker["pos"], False, None
 
-    return None, False
-
-
-PICK_X_MIN = -1.5     # nếu cube_base[0] nhỏ hơn giá trị này thì coi như đã quá xa
-PICK_X_MAX = -0.40     # vùng bắt đầu pick tốt
-PICK_Y_LIMIT = 0.40    # giới hạn lệch ngang, tùy scene của bạn
+    return None, False, None
 
 
-def dynamic_ik_track_step(target_mode, lead_time, reach_tolerance):
-    cube_base, seen = update_cube_tracker()
+# =========================
+# DYNAMIC IK TRACKING
+# =========================
+
+def dynamic_ik_track_step(target_mode, lead_time, reach_tolerance, ori_tolerance_deg=3.0):
+    cube_base, seen, candidate = update_cube_tracker()
 
     if cube_base is None:
-        return False, None, None, seen, "no_cube"
+        return False, None, None, None, seen, "no_cube"
 
     cube_pred = cube_base + tracker["vel"] * lead_time
+    inside, workspace_status = is_inside_broad_workspace(cube_pred)
 
-    # Nếu cube đã trôi quá xa vùng làm việc thì bỏ cube này
-    if cube_pred[0] < PICK_X_MIN:
-        return False, None, None, seen, "too_late"
+    # Do not immediately fail when the cube is still early or slightly outside.
+    # Keep the target locked so the robot waits for the same cube.
+    if workspace_status == "too_late":
+        tracker["too_late_count"] += 1
+        if tracker["too_late_count"] >= TOO_LATE_GRACE_STEPS:
+            return False, None, None, None, seen, "too_late"
+        return False, None, None, None, seen, "waiting_too_late_confirm"
 
-    if abs(cube_pred[1]) > PICK_Y_LIMIT:
-        return False, None, None, seen, "out_y"
+    tracker["too_late_count"] = 0
 
-    p_above_base, p_down_base = make_pick_targets_from_cube_base(cube_pred)
-
-    if target_mode == "above":
-        target_base = p_above_base
-    else:
-        target_base = p_down_base
+    if workspace_status in ("too_early", "out_y", "out_radius"):
+        return False, None, None, None, seen, "waiting_" + workspace_status
 
     current_q = motion.get_current_joint_positions()
-
     if not is_valid_vector(current_q, size=6):
-        return False, target_base, None, seen, "bad_q"
+        return False, None, None, None, seen, "bad_q"
 
-    # Tính lỗi hiện tại trước khi gọi IK
+    p_above_base, p_down_base, target_R = make_pick_targets_from_cube_base(cube_pred, seed_q=current_q)
+    target_base = p_above_base if target_mode == "above" else p_down_base
+
     flange_pos = motion.fk_position(current_q)
-    pos_error = np.linalg.norm(np.array(target_base) - np.array(flange_pos))
+    pos_error = float(np.linalg.norm(np.array(target_base) - np.array(flange_pos)))
+    ori_error_deg = float(motion.gripper_down_angle_deg(current_q, flange_axis=GRIPPER_DOWN_AXIS))
 
-    # Với mode down, vẫn tiếp tục gọi IK để sửa hướng gripper,
-    # không được chỉ dựa vào lỗi vị trí.
-    if pos_error < reach_tolerance:
-        return True, target_base, pos_error, seen, "reached"
+    # Critical fix: do not stop only because position is close. The gripper must
+    # also be vertical; otherwise it closes sideways at the conveyor edge.
+    if pos_error < reach_tolerance and ori_error_deg < ori_tolerance_deg:
+        tracker["ik_fail_count"] = 0
+        return True, target_base, pos_error, ori_error_deg, seen, "reached"
 
-    q_target = motion.inverse_kinematics_downward(
-        target_base,
+    q_target = motion.inverse_kinematics_pose(
+        target_pos_base=target_base,
+        target_R_base_flange=target_R,
         seed_q=current_q,
-        flange_axis=GRIPPER_DOWN_AXIS,
-        max_iters=120,
-        pos_tolerance=0.006,
-        ori_tolerance=0.01,
-        damping=0.08,
-        max_step=0.08,
-        stay_near_seed=0.002,
+        max_iters=180,
+        pos_tolerance=0.005,
+        ori_tolerance=np.radians(1.8),
+        damping=0.055,
+        max_step=0.060,
+        position_weight=1.0,
+        orientation_weight=1.8,
+        stay_near_seed=0.0015,
+        verbose=False,
     )
 
     if not is_valid_vector(q_target, size=6):
-        # Không trả err=None nữa. Vẫn trả pos_error thật để debug.
-        return False, target_base, pos_error, seen, "ik_fail"
+        tracker["ik_fail_count"] += 1
+        if tracker["ik_fail_count"] >= IK_FAIL_GRACE_STEPS:
+            return False, target_base, pos_error, ori_error_deg, seen, "ik_fail_final"
+        return False, target_base, pos_error, ori_error_deg, seen, "ik_fail_wait"
 
+    tracker["ik_fail_count"] = 0
     q_cmd = limit_joint_step(current_q, q_target)
     motion.move_ur_to(q_cmd)
 
-    return False, target_base, pos_error, seen, "tracking"
+    return False, target_base, pos_error, ori_error_deg, seen, "tracking"
 
 
 def dynamic_track_to_cube(
@@ -215,36 +314,37 @@ def dynamic_track_to_cube(
     lead_time,
     reach_tolerance,
     stable_required=4,
-    stop_when_reached=True
+    stop_when_reached=True,
+    ori_tolerance_deg=3.0,
 ):
     stable_count = 0
 
     for i in range(max_steps):
-        reached, target_base, pos_error, seen, status = dynamic_ik_track_step(
+        reached, target_base, pos_error, ori_error_deg, seen, status = dynamic_ik_track_step(
             target_mode=target_mode,
             lead_time=lead_time,
-            reach_tolerance=reach_tolerance
+            reach_tolerance=reach_tolerance,
+            ori_tolerance_deg=ori_tolerance_deg,
         )
-    
+
         if status == "too_late":
-            print("[DYNAMIC] Cube đã chạy quá xa vùng pick. Bỏ cube này.")
+            print("[DYNAMIC] Cube đã ra khỏi vùng gắp thật sự. Bỏ cube này.")
             return False
 
-        if status == "out_y":
-            print("[DYNAMIC] Cube lệch ngang quá nhiều. Bỏ cube này.")
+        if status == "ik_fail_final":
+            print("[DYNAMIC] IK fail quá lâu với cube hiện tại. Bỏ cube này để tránh loạn.")
             return False
 
         if target_base is None:
-            if i % 20 == 0:
-                print(f"[DYNAMIC] status={status}, camera chưa có target hợp lệ")
+            if i % 15 == 0:
+                print(f"[DYNAMIC] mode={target_mode}, status={status}, seen={seen}, waiting same cube...")
         else:
             if i % 10 == 0:
                 print(
-                    f"[DYNAMIC] mode={target_mode}, "
-                    f"status={status}, "
-                    f"seen={seen}, "
+                    f"[DYNAMIC] mode={target_mode}, status={status}, seen={seen}, "
                     f"target={[round(float(v), 4) for v in target_base]}, "
-                    f"err={round(float(pos_error), 4) if pos_error is not None else None}"
+                    f"pos_err={round(float(pos_error), 4) if pos_error is not None else None}, "
+                    f"ori_err={round(float(ori_error_deg), 2) if ori_error_deg is not None else None}deg"
                 )
 
         if reached:
@@ -262,23 +362,19 @@ def dynamic_track_to_cube(
 
 
 def dynamic_lift_after_pick(lift_height=0.18):
-    """
-    Sau khi đã kẹp cube, không cần bám conveyor nữa.
-    Nâng flange thẳng lên theo hệ Base.
-    """
     current_q = motion.get_current_joint_positions()
     current_pos = motion.fk_position(current_q)
 
-    lift_target = np.array([
-        current_pos[0],
-        current_pos[1],
-        current_pos[2] + lift_height
-    ])
+    lift_target = np.array([current_pos[0], current_pos[1], current_pos[2] + lift_height])
 
-    q_lift = motion.inverse_kinematics_downward(
-        lift_target,
+    target_R = motion.make_gripper_down_rotation(seed_q=current_q, flange_axis=GRIPPER_DOWN_AXIS)
+    q_lift = motion.inverse_kinematics_pose(
+        target_pos_base=lift_target,
+        target_R_base_flange=target_R,
         seed_q=current_q,
-        flange_axis=GRIPPER_DOWN_AXIS,
+        max_iters=180,
+        orientation_weight=1.5,
+        verbose=False,
     )
 
     if not is_valid_vector(q_lift, size=6):
@@ -289,93 +385,79 @@ def dynamic_lift_after_pick(lift_height=0.18):
 
 
 def dynamic_pick_cube():
-    """
-    Pick động:
-    1. bám cube ở vị trí above
-    2. hạ xuống nhưng vẫn tính lại IK liên tục
-    3. đóng gripper trong khi vẫn bám cube vài step
-    4. nâng lên
-    """
-
     print("\n=== DYNAMIC PICK START ===")
-
-    # Reset tracker cho mỗi cube mới
-    tracker["pos"] = None
-    tracker["vel"] = np.zeros(3)
-    tracker["last_meas"] = None
-    tracker["lost"] = 0
+    reset_tracker()
 
     ok = dynamic_track_to_cube(
         target_mode="above",
-        max_steps=250,
+        max_steps=300,
         lead_time=LEAD_TIME_ABOVE,
         reach_tolerance=0.035,
         stable_required=5,
-        stop_when_reached=True
+        stop_when_reached=True,
+        ori_tolerance_deg=4.0,
     )
 
     if not ok:
         print("[DYNAMIC] Không bám được q_above động")
+        reset_tracker()
         return False
 
     print("[DYNAMIC] Đã bám tới vùng above.")
 
     ok = dynamic_track_to_cube(
         target_mode="down",
-        max_steps=160,
+        max_steps=190,
         lead_time=LEAD_TIME_DOWN,
-        reach_tolerance=0.022,
-        stable_required=3,
-        stop_when_reached=True
+        reach_tolerance=0.019,
+        stable_required=4,
+        stop_when_reached=True,
+        ori_tolerance_deg=2.5,
     )
 
     if not ok:
         print("[DYNAMIC] Không xuống được vùng pick động")
+        reset_tracker()
         return False
 
     print("[DYNAMIC] Đã tới vùng down. Đóng gripper...")
-
     gripper.close_gripper()
 
-    # Trong lúc gripper đang đóng, vẫn tiếp tục bám cube một đoạn ngắn
     dynamic_track_to_cube(
         target_mode="down",
         max_steps=35,
         lead_time=LEAD_TIME_CLOSE,
         reach_tolerance=999.0,
         stable_required=2,
-        stop_when_reached=False
+        stop_when_reached=False,
+        ori_tolerance_deg=4.0,
     )
 
     motion.wait_steps(10)
 
     ok = dynamic_lift_after_pick(lift_height=0.18)
-
     if not ok:
         print("[DYNAMIC] Lift failed")
+        reset_tracker()
         return False
 
     print("[DYNAMIC] Pick động xong và đã nâng cube.")
 
-    # 7. Check whether pick succeeded
     if camera_utils.check_if_picked_successfully(wait_steps_fn=motion.wait_steps):
-        # Success path: carry to bin and drop
-        motion.goto_pose(poses.SAFE_MID,   steps=20)
-        motion.goto_pose(poses.BIN_ABOVE,  steps=30)
-        motion.goto_pose(poses.BIN_DOWN,   steps=20)
+        motion.goto_pose(poses.SAFE_MID,   steps=25)
+        motion.goto_pose(poses.BIN_ABOVE,  steps=35)
+        motion.goto_pose(poses.BIN_DOWN,   steps=25)
 
         gripper.open_gripper()
 
-        motion.goto_pose(poses.BIN_ABOVE,  steps=20)
-        motion.goto_pose(poses.SAFE_MID,   steps=20)
+        motion.goto_pose(poses.BIN_ABOVE,  steps=25)
+        motion.goto_pose(poses.SAFE_MID,   steps=25)
     else:
-        # Miss path: skip bin run, go straight back home
         print("Pick missed. Returning HOME for next target...")
 
-    # Back to home for next cycle
     gripper.open_gripper()
+    reset_tracker()
     motion.goto_pose(poses.PICK_ABOVE, steps=100)
-
     return True
 
 
@@ -383,137 +465,21 @@ def dynamic_pick_cube():
 # STARTUP / WARM-UP
 # =========================
 
-# Cho sensor/motor/camera cập nhật vài bước đầu để tránh NaN
 for _ in range(10):
     if robot.step(TIME_STEP) == -1:
         quit()
 
-# Command HOME bằng lệnh trực tiếp trước, không nội suy
 motion.move_ur_to(poses.HOME)
 motion.wait_steps(50)
 
-# Mở gripper
 gripper.open_gripper()
 motion.wait_steps(20)
 
-# Đưa robot về vùng camera nhìn thấy băng chuyền/cube
 motion.goto_pose(poses.PICK_ABOVE, steps=80)
 motion.wait_steps(20)
 
-print("=== IK TEST START ===")
-
-step_count = 0
-
+print("=== DYNAMIC PICK LOOP START ===")
 
 while robot.step(TIME_STEP) != -1:
     ok = dynamic_pick_cube()
-
     print("[DYNAMIC] Thử lại cube tiếp theo...")
-"""
-# =========================
-# IK TEST LOOP
-# =========================
-
-while robot.step(TIME_STEP) != -1:
-
-    current_q = motion.get_current_joint_positions()
-
-    if not is_valid_vector(current_q, size=6):
-        print(f"[IK TEST] current_q invalid: {current_q}")
-        continue
-
-    # FK hiện tại: Base <- Flange
-    T_base_flange = motion.forward_kinematics(current_q)
-
-    # Transform cố định: World <- Base
-    T_world_base = motion.get_world_base_transform()
-
-    cube_base = camera_utils.get_cube_base_position(T_base_flange)
-
-    if cube_base is None:
-        if step_count % 20 == 0:
-            print("[IK TEST] Camera chưa thấy cube...")
-        step_count += 1
-        continue
-
-    if not is_valid_vector(cube_base, size=3):
-        print(f"[IK TEST] cube_base invalid: {cube_base}")
-        continue
-
-    cube_world = motion.base_point_to_world(cube_base)
-
-    print(f"\n[IK TEST] Cube World: {[round(float(v), 4) for v in cube_world]}")
-    print(f"[IK TEST] Cube Base : {[round(float(v), 4) for v in cube_base]}")
-
-    p_above_base, p_down_base = make_pick_targets_from_cube_base(cube_base)
-
-    print(f"[IK TEST] Target above base: {[round(float(v), 4) for v in p_above_base]}")
-    print(f"[IK TEST] Target down base : {[round(float(v), 4) for v in p_down_base]}")
-
-    if not is_valid_vector(p_above_base, size=3):
-        print(f"[IK TEST] p_above_base invalid: {p_above_base}")
-        continue
-
-    if not is_valid_vector(p_down_base, size=3):
-        print(f"[IK TEST] p_down_base invalid: {p_down_base}")
-        continue
-
-    print(f"[IK TEST] Target above base: {[round(float(v), 4) for v in p_above_base]}")
-    print(f"[IK TEST] Target down base : {[round(float(v), 4) for v in p_down_base]}")
-
-    # 3. IK có ràng buộc hướng: gripper/flange phải vuông góc mặt conveyor
-    # Lỗi trong bản bạn gửi: dùng target_above_base / target_down_base / PICK_ABOVE
-    # nhưng các biến đúng trong file này là p_above_base / p_down_base / poses.PICK_ABOVE.
-    q_above = motion.inverse_kinematics_downward(
-        p_above_base,
-        seed_q=poses.PICK_ABOVE,
-        flange_axis=GRIPPER_DOWN_AXIS,
-    )
-
-    if not is_valid_vector(q_above, size=6):
-        print(f"[IK TEST] Không tìm được q_above hoặc q_above invalid: {q_above}")
-        continue
-
-    q_down = motion.inverse_kinematics_downward(
-        p_down_base,
-        seed_q=q_above,
-        flange_axis=GRIPPER_DOWN_AXIS,
-    )
-
-    if not is_valid_vector(q_down, size=6):
-        print(f"[IK TEST] Không tìm được q_down hoặc q_down invalid: {q_down}")
-        continue
-
-    print(f"[IK TEST] q_above: {[round(float(v), 4) for v in q_above]}")
-    print(f"[IK TEST] q_down : {[round(float(v), 4) for v in q_down]}")
-
-    # 4. Debug hướng gripper sau IK
-    if hasattr(motion, "debug_check_gripper_down"):
-        motion.debug_check_gripper_down(q_above, flange_axis=GRIPPER_DOWN_AXIS)
-        motion.debug_check_gripper_down(q_down, flange_axis=GRIPPER_DOWN_AXIS)
-
-    # 5. Đi tới vị trí phía trên cube
-    ok = motion.goto_pose(q_above, steps=80, tolerance=0.04)
-    if not ok:
-        print("[IK TEST] goto_pose(q_above) failed")
-        continue
-
-    print("[IK TEST] Đã tới q_above.")
-    motion.wait_steps(20)
-
-    # 6. Hạ xuống vị trí gắp
-    ok = motion.goto_pose(q_down, steps=60)
-    if not ok:
-        print("[IK TEST] goto_pose(q_down) failed")
-        continue
-    print("[IK TEST] Đã tới q_down.")
-    motion.wait_steps(20)
-
-    gripper.close_gripper()
-    motion.wait_steps(80)
-
-    motion.goto_pose(q_above, steps=80)
-
-    print("[IK TEST] Đã gắp thử và nâng lên.")
-    break
-"""

@@ -12,6 +12,7 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/containers/protos/PlasticCrate.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/Floor.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/Parquetry.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/softbank/nao/protos/BallCandy.proto"
 
 WorldInfo {
   info [
@@ -33,8 +34,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.15414442526139385 0.012902860562035386 0.987964074422826 2.976588866748336
-  position 8.826207462668531 -1.7538687302562892 3.3248232126957125
+  orientation -0.2671560828107303 0.30938156201915795 0.9126394011326774 1.51550727793636
+  position -0.2824006435410197 -6.737425424349568 4.556432558087525
   exposure 1.7
   follow "UR5e:shoulder_link:upper_arm_link:forearm_link:wrist_1_link:wrist_2_link:wrist_3_link:solid"
 }
@@ -131,7 +132,7 @@ ConveyorBelt {
   speed 0.1
 }
 DEF CUBE_1 Solid {
-  translation 0.971838 -0.462437 0.624869
+  translation 1.6958 -0.517097 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -218,6 +219,19 @@ Solid {
   ]
   name "direct_panel(1)"
   boundingObject USE box
+}
+BallCandy {
+  translation 2.07784 -0.940533 0.69
+  color 0 1 0.2
+}
+BallCandy {
+  translation 1.89059 -0.733811 0.69
+  name "ball candy(2)"
+  color 0.9 1 0.2
+}
+BallCandy {
+  translation 1.51893 -0.888638 0.69
+  name "ball candy(1)"
 }
 Solid {
   translation -1.07036 -1.08143 0.69
@@ -346,7 +360,7 @@ DEF CUBE_1 Solid {
   ]
 }
 DEF cube2 Solid {
-  translation 1.10099 -0.70403 0.624869
+  translation 1.13258 -0.379138 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
