@@ -10,4 +10,5 @@ orthographicViewHeight: 8.21422
 textFiles: 2 "controllers/ur5e/ur5e.py" "controllers/test/test.py" "controllers/tuning/tuning.py"
 globalOptionalRendering: CameraFrustums
 consoles: Console:All:All
-renderingDevicePerspectives: UR5e:camera;1;0.308333;0;0
+renderingDevicePerspectives: UR5e(1):camera;1;0.0774725;0.868275;0
+renderingDevicePerspectives: UR5e:camera;1;0.1375;0;0

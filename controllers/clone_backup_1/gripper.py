@@ -27,4 +27,4 @@ def open_gripper():
 
 def close_gripper():
     for motor in _gripper_motors:
-        motor.setPosition(0.8)
+        motor.setPosition(0.6)

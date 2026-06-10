@@ -34,8 +34,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.2671560828107303 0.30938156201915795 0.9126394011326774 1.51550727793636
-  position -0.2824006435410197 -6.737425424349568 4.556432558087525
+  orientation -0.4108065462129835 -0.07964301104627847 0.9082372885870973 3.490185996857678
+  position 6.449649544923387 1.7131883675065618 5.5845228607836495
   exposure 1.7
   follow "UR5e:shoulder_link:upper_arm_link:forearm_link:wrist_1_link:wrist_2_link:wrist_3_link:solid"
 }
@@ -76,6 +76,22 @@ SolidBox {
   }
 }
 SolidBox {
+  translation 1.65909 0.366592 0.305
+  name "box(4)"
+  size 1.8 0.4 0.61
+  appearance GalvanizedMetal {
+    colorOverride 0.7 1 1
+  }
+}
+SolidBox {
+  translation 1.65909 0.366592 0.305
+  name "box(5)"
+  size 1.8 0.4 0.61
+  appearance GalvanizedMetal {
+    colorOverride 0.7 1 1
+  }
+}
+SolidBox {
   translation -0.137236 0.754753 0.305
   name "box(3)"
   size 1.8 0.4 0.62
@@ -84,8 +100,24 @@ SolidBox {
   }
 }
 SolidBox {
-  translation -0.135 -0.0323 0.305
+  translation 1.66036 0.751982 0.305
+  name "box(6)"
+  size 1.8 0.4 0.62
+  appearance GalvanizedMetal {
+    colorOverride 0.7 1 1
+  }
+}
+SolidBox {
+  translation 1.6667 -0.0306284 0.305
   name "box(2)"
+  size 1.8 0.4 0.61
+  appearance DEF appear GalvanizedMetal {
+    colorOverride 0.7 1 1
+  }
+}
+SolidBox {
+  translation -0.135 -0.0323 0.305
+  name "box(1)"
   size 1.8 0.4 0.61
   appearance DEF appear GalvanizedMetal {
     colorOverride 0.7 1 1
@@ -95,6 +127,34 @@ UR5e {
   translation 0 0 0.61
   rotation 5.67193e-08 2.39745e-09 -1 1.5708003061004252
   controller "clone_backup"
+  controllerArgs [
+    ""
+  ]
+  supervisor TRUE
+  selfCollision FALSE
+  toolSlot [
+    DEF TCP Solid {
+      name "solid(1)"
+    }
+    DEF CAMERA_NODE Camera {
+      translation 0.01 0.1 0.02
+      rotation 0 0 1 1.5708003061004252
+      fieldOfView 2.2
+      width 1280
+      height 720
+      far 2
+      recognition Recognition {
+      }
+    }
+    DEF tool_slot Robotiq3fGripper {
+    }
+  ]
+}
+UR5e {
+  translation 1.69699 -0.0532074 0.71
+  rotation 5.67193e-08 2.39745e-09 -1 1.5708003061004252
+  name "UR5e(1)"
+  controller "clone_backup_1"
   controllerArgs [
     ""
   ]
@@ -132,7 +192,7 @@ ConveyorBelt {
   speed 0.1
 }
 DEF CUBE_1 Solid {
-  translation 1.6958 -0.517097 0.624869
+  translation 3.10856 -0.504974 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -156,7 +216,7 @@ DEF CUBE_1 Solid {
   ]
 }
 DEF CUBE_1 Solid {
-  translation 2.32219 -0.529719 0.624869
+  translation 3.6835 -0.606824 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -180,7 +240,7 @@ DEF CUBE_1 Solid {
   ]
 }
 DEF CUBE_1 Solid {
-  translation 2.49252 -0.733434 0.624869
+  translation 4.02749 -0.521468 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -221,16 +281,16 @@ Solid {
   boundingObject USE box
 }
 BallCandy {
-  translation 2.07784 -0.940533 0.69
+  translation 3.90885 -0.694636 0.69
   color 0 1 0.2
 }
 BallCandy {
-  translation 1.89059 -0.733811 0.69
+  translation 4.28742 -0.626392 0.69
   name "ball candy(2)"
   color 0.9 1 0.2
 }
 BallCandy {
-  translation 1.51893 -0.888638 0.69
+  translation 3.57467 -0.800141 0.69
   name "ball candy(1)"
 }
 Solid {
@@ -360,7 +420,7 @@ DEF CUBE_1 Solid {
   ]
 }
 DEF cube2 Solid {
-  translation 1.13258 -0.379138 0.624869
+  translation 3.10949 -0.755912 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -443,9 +503,16 @@ ConveyorBelt {
   speed 0.2
 }
 DEF RED_BIN PlasticCrate {
-  translation -0.13938013678957173 0.45001355437030144 0.6133010479153439
+  translation 1.52136 0.421041 0.613301
   rotation 0.9999999901776899 2.031727657536602e-10 -0.00014015926670413084 0.014955468142483865
   name "red_bin2"
+  size 0.6 0.45 0.4
+  mass 1
+}
+DEF RED_BIN PlasticCrate {
+  translation -0.13938013678957173 0.45001355437030144 0.6133010479153439
+  rotation 0.9999999901776899 2.031727657536602e-10 -0.00014015926670413084 0.014955468142483865
+  name "red_bin2(1)"
   size 0.6 0.45 0.4
   mass 1
 }
