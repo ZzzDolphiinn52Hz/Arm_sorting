@@ -20,7 +20,7 @@ _ur_sensors = []
 
 # Slightly faster than 0.8 so the arm can use more of the camera-visible belt
 # before the cube leaves the reachable window. Keep below motor maxVelocity.
-DEFAULT_MOTOR_VELOCITY = 1.2
+DEFAULT_MOTOR_VELOCITY = 1.5
 
 
 def init(robot, time_step):

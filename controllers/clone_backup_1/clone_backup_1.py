@@ -27,7 +27,37 @@ if end_effector_node is None:
 # Bản motion_optimized hỗ trợ đủ: "z", "-z", "x", "-x", "y", "-y".
 # Nếu gripper vẫn nghiêng, đổi biến này trước, không cần sửa IK.
 GRIPPER_DOWN_AXIS = "z"
+# =========================
+# SORTING BIN MAP
+# =========================
 
+BIN_POSES = {
+    "BLUE_CUBE_BIN": (
+        poses.BLUE_CUBE_BIN_ABOVE,
+        poses.BLUE_CUBE_BIN_DOWN,
+    ),
+
+    "RED_CUBE_BIN": (
+        poses.RED_CUBE_BIN_ABOVE,
+        poses.RED_CUBE_BIN_DOWN,
+    ),
+
+    "YELLOW_CYLINDER_BIN": (
+        poses.YELLOW_CYLINDER_BIN_ABOVE,
+        poses.YELLOW_CYLINDER_BIN_DOWN,
+    ),
+
+    "GREEN_SPHERE_BIN": (
+        poses.GREEN_SPHERE_BIN_ABOVE,
+        poses.GREEN_SPHERE_BIN_DOWN,
+    ),
+
+    # fallback nếu phân loại lỗi
+    "UNKNOWN_BIN": (
+        poses.BIN_ABOVE,
+        poses.BIN_DOWN,
+    ),
+}
 
 # =========================
 # PICK GEOMETRY CONFIG
@@ -81,15 +111,38 @@ workspace = {
 }
 
 tracker = {
-    "id": None,
     "pos": None,
     "vel": np.zeros(3),
     "last_meas": None,
     "lost": 0,
+
+    "id": None,
+    "model": None,
+    "shape": None,
+    "color": None,
+    "bin": None,
+
     "too_late_count": 0,
     "ik_fail_count": 0,
 }
 
+def reset_object_tracker():
+    tracker["pos"] = None
+    tracker["vel"] = np.zeros(3)
+    tracker["last_meas"] = None
+    tracker["lost"] = 0
+
+    tracker["id"] = None
+    tracker["model"] = None
+    tracker["shape"] = None
+    tracker["color"] = None
+    tracker["bin"] = None
+
+    tracker["too_late_count"] = 0
+    tracker["ik_fail_count"] = 0
+
+    if hasattr(camera_utils, "reset_target_lock"):
+        camera_utils.reset_target_lock()
 
 # =========================
 # UTILS
@@ -104,7 +157,7 @@ def is_valid_vector(v, size=None):
     return np.all(np.isfinite(arr))
 
 
-def reset_tracker():
+def reset_object_tracker():
     tracker["id"] = None
     tracker["pos"] = None
     tracker["vel"] = np.zeros(3)
@@ -123,6 +176,89 @@ def limit_joint_step(current_q, target_q, max_step=MAX_JOINT_STEP):
     dq = np.clip(dq, -max_step, max_step)
     return (current_q + dq).tolist()
 
+PICK_X_BEST = -0.38
+LOCK_DISTANCE = 0.12
+
+TEST_ONLY_BIN = None
+
+def select_target_object(objects_base):
+    """
+    Chọn 1 object tốt nhất để gắp.
+    Bước này chỉ chọn object đã phân loại được bin.
+    """
+    candidates = []
+
+    for obj in objects_base:
+        obj_bin = obj.get("bin")
+
+        if obj_bin in [None, "UNKNOWN_BIN"]:
+            continue
+
+        # Khi đang test riêng một loại, bỏ qua object thuộc bin khác
+        if TEST_ONLY_BIN is not None and obj_bin != TEST_ONLY_BIN:
+            continue
+
+        p = obj.get("base_position", None)
+
+        if not is_valid_vector(p, size=3):
+            continue
+
+        p = np.array(p, dtype=float)
+
+        # Lọc ngang nhẹ, tránh chọn vật quá lệch khỏi vùng tay máy.
+        if abs(p[1]) > PICK_Y_LIMIT:
+            continue
+
+        score = (
+            abs(p[0] - PICK_X_BEST) * 2.0
+            + abs(p[1]) * 1.0
+        )
+
+        candidates.append((score, obj))
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda x: x[0])
+    return candidates[0][1]
+
+
+def find_locked_object(objects_base):
+    """
+    Nếu tracker đã khóa object thì cố bám đúng object đó.
+    Ưu tiên id, nếu không tìm được id thì bám object gần vị trí tracker nhất.
+    """
+    if not objects_base:
+        return None
+
+    # Ưu tiên 1: bám theo recognition id
+    if tracker["id"] is not None:
+        for obj in objects_base:
+            if obj.get("id") == tracker["id"]:
+                return obj
+
+    # Ưu tiên 2: nếu mất id, bám object gần vị trí cũ nhất
+    if tracker["pos"] is not None:
+        best_obj = None
+        best_dist = 999.0
+
+        for obj in objects_base:
+            p = obj.get("base_position", None)
+
+            if not is_valid_vector(p, size=3):
+                continue
+
+            dist = np.linalg.norm(np.array(p, dtype=float) - tracker["pos"])
+
+            if dist < best_dist:
+                best_dist = dist
+                best_obj = obj
+
+        if best_obj is not None and best_dist < LOCK_DISTANCE:
+            return best_obj
+
+    # Nếu chưa khóa gì thì chọn target mới
+    return select_target_object(objects_base)
 
 def clamp_velocity(v):
     v = np.array(v, dtype=float)
@@ -236,19 +372,82 @@ def update_cube_tracker():
 
     return None, False, None
 
+def update_object_tracker():
+    """
+    Tracker mới:
+    - Lấy nhiều object từ camera
+    - Chọn 1 object
+    - Lưu shape/color/bin vào tracker
+    - Trả về vị trí base để IK dùng như trước
+    """
+    current_q = motion.get_current_joint_positions()
+
+    if not is_valid_vector(current_q, size=6):
+        return None, False
+
+    T_base_flange = motion.forward_kinematics(current_q)
+    objects_base = camera_utils.get_objects_base_with_bin(T_base_flange)
+
+    obj = find_locked_object(objects_base)
+
+    if obj is not None:
+        meas = obj.get("base_position", None)
+
+        if is_valid_vector(meas, size=3):
+            meas = np.array(meas, dtype=float)
+
+            if tracker["pos"] is None or tracker["last_meas"] is None:
+                tracker["pos"] = meas
+                tracker["vel"] = np.zeros(3)
+            else:
+                raw_vel = (meas - tracker["last_meas"]) / DT
+                tracker["vel"] = (1.0 - VEL_ALPHA) * tracker["vel"] + VEL_ALPHA * raw_vel
+                tracker["pos"] = (1.0 - CUBE_ALPHA) * tracker["pos"] + CUBE_ALPHA * meas
+
+            tracker["last_meas"] = meas
+            tracker["lost"] = 0
+
+            # Lưu thông tin phân loại vào tracker
+            was_new_target = tracker["id"] is None
+
+            tracker["id"] = obj.get("id")
+            tracker["model"] = obj.get("model")
+            tracker["shape"] = obj.get("shape")
+            tracker["color"] = obj.get("color")
+            tracker["bin"] = obj.get("bin")
+
+            if was_new_target:
+                print(
+                    f"[TARGET LOCKED] "
+                    f"id={tracker['id']} | "
+                    f"shape={tracker['shape']} | "
+                    f"color={tracker['color']} | "
+                    f"bin={tracker['bin']}"
+                )
+
+            return tracker["pos"], True
+
+    # Nếu tạm mất object thì dự đoán tiếp
+    if tracker["pos"] is not None and tracker["lost"] < LOST_MAX_STEPS:
+        tracker["pos"] = tracker["pos"] + tracker["vel"] * DT
+        tracker["lost"] += 1
+        return tracker["pos"], False
+
+    return None, False
 
 # =========================
 # DYNAMIC IK TRACKING
 # =========================
 
 def dynamic_ik_track_step(target_mode, lead_time, reach_tolerance, ori_tolerance_deg=3.0):
-    cube_base, seen, candidate = update_cube_tracker()
+    object_base, seen = update_object_tracker()
 
-    if cube_base is None:
-        return False, None, None, None, seen, "no_cube"
+    if object_base is None:
+        return False, None, None, None, seen, "no_object"
 
-    cube_pred = cube_base + tracker["vel"] * lead_time
-    inside, workspace_status = is_inside_broad_workspace(cube_pred)
+    object_pred = object_base + tracker["vel"] * lead_time
+
+    inside, workspace_status = is_inside_broad_workspace(object_pred)
 
     # Do not immediately fail when the cube is still early or slightly outside.
     # Keep the target locked so the robot waits for the same cube.
@@ -267,7 +466,7 @@ def dynamic_ik_track_step(target_mode, lead_time, reach_tolerance, ori_tolerance
     if not is_valid_vector(current_q, size=6):
         return False, None, None, None, seen, "bad_q"
 
-    p_above_base, p_down_base, target_R = make_pick_targets_from_cube_base(cube_pred, seed_q=current_q)
+    p_above_base, p_down_base, target_R = make_pick_targets_from_cube_base(object_pred, seed_q=current_q)
     target_base = p_above_base if target_mode == "above" else p_down_base
 
     flange_pos = motion.fk_position(current_q)
@@ -381,26 +580,53 @@ def dynamic_lift_after_pick(lift_height=0.18):
         print("[DYNAMIC] Không tìm được q_lift")
         return False
 
-    return motion.goto_pose(q_lift, steps=80, tolerance=0.04)
+    return motion.goto_pose(q_lift, steps=30, tolerance=0.04)
 
+def place_object_to_bin(bin_name):
+    """
+    Nhận tên bin, tự lấy pose above/down tương ứng rồi thả vật.
+    """
+
+    if bin_name not in BIN_POSES:
+        print(f"[SORT WARNING] Không có bin '{bin_name}', dùng UNKNOWN_BIN")
+        bin_name = "UNKNOWN_BIN"
+
+    bin_above, bin_down = BIN_POSES[bin_name]
+
+    print(f"[SORT] Đưa object tới {bin_name}")
+
+    motion.goto_pose(poses.SAFE_MID, steps=5)
+
+    motion.goto_pose(bin_above, steps=10)
+    motion.goto_pose(bin_down, steps=5)
+
+    gripper.open_gripper()
+    # motion.wait_steps(6)
+
+    motion.goto_pose(bin_above, steps=10)
+    motion.goto_pose(poses.SAFE_MID, steps=5)
+    motion.goto_pose(poses.PICK_ABOVE, steps=5)
+
+    return True
 
 def dynamic_pick_cube():
     print("\n=== DYNAMIC PICK START ===")
-    reset_tracker()
+    # reset_object_tracker()
+    reset_object_tracker()
 
     ok = dynamic_track_to_cube(
         target_mode="above",
         max_steps=300,
         lead_time=LEAD_TIME_ABOVE,
-        reach_tolerance=0.035,
-        stable_required=5,
+        reach_tolerance=0.019,
+        stable_required=3,
         stop_when_reached=True,
         ori_tolerance_deg=4.0,
     )
 
     if not ok:
         print("[DYNAMIC] Không bám được q_above động")
-        reset_tracker()
+        reset_object_tracker()
         return False
 
     print("[DYNAMIC] Đã bám tới vùng above.")
@@ -410,17 +636,25 @@ def dynamic_pick_cube():
         max_steps=190,
         lead_time=LEAD_TIME_DOWN,
         reach_tolerance=0.019,
-        stable_required=4,
+        stable_required=2,
         stop_when_reached=True,
         ori_tolerance_deg=2.5,
     )
 
     if not ok:
         print("[DYNAMIC] Không xuống được vùng pick động")
-        reset_tracker()
+        reset_object_tracker()
         return False
 
-    print("[DYNAMIC] Đã tới vùng down. Đóng gripper...")
+    picked_bin = tracker["bin"] if tracker["bin"] is not None else "UNKNOWN_BIN"
+
+    print(
+        f"[DYNAMIC] Đã tới vùng down. Đóng gripper..."
+        f" Picked target: shape={tracker['shape']}, "
+        f"color={tracker['color']}, "
+        f"bin={picked_bin}"
+    )
+
     gripper.close_gripper()
 
     dynamic_track_to_cube(
@@ -433,32 +667,32 @@ def dynamic_pick_cube():
         ori_tolerance_deg=4.0,
     )
 
-    motion.wait_steps(10)
+    # motion.wait_steps(10)
 
     ok = dynamic_lift_after_pick(lift_height=0.18)
     if not ok:
         print("[DYNAMIC] Lift failed")
-        reset_tracker()
+        reset_object_tracker()
         return False
 
     print("[DYNAMIC] Pick động xong và đã nâng cube.")
 
+    # Tạm thời bỏ check để test sorting theo bin trước
+    print(f"[SORT TEST] Picked bin = {picked_bin}")
+    place_object_to_bin(picked_bin)
+
+    """
     if camera_utils.check_if_picked_successfully(wait_steps_fn=motion.wait_steps):
-        motion.goto_pose(poses.SAFE_MID,   steps=15)
-        motion.goto_pose(poses.BIN_ABOVE,  steps=25)
-        motion.goto_pose(poses.BIN_DOWN,   steps=15)
-
-        gripper.open_gripper()
-
-        motion.goto_pose(poses.BIN_ABOVE,  steps=15)
-        motion.goto_pose(poses.SAFE_MID,   steps=15)
+        print(f"[SORT] Picked bin = {picked_bin}")
+        place_object_to_bin(picked_bin)
     else:
         print("Pick missed. Returning HOME for next target...")
 
     gripper.open_gripper()
-    reset_tracker()
+    reset_object_tracker()
     motion.goto_pose(poses.PICK_ABOVE, steps=50)
     return True
+    """
 
 
 # =========================
@@ -478,12 +712,12 @@ motion.wait_steps(20)
 motion.goto_pose(poses.PICK_ABOVE, steps=80)
 motion.wait_steps(20)
 
-print("=== SORT DEBUG ONLY START ===")
-
-step_count = 0
+print("=== DYNAMIC SORT PICK LOOP START ===")
 
 while robot.step(TIME_STEP) != -1:
-    if step_count % 10 == 0:
-        camera_utils.debug_print_detected_objects_with_bin()
+    ok = dynamic_pick_cube()
 
-    step_count += 1
+    if ok:
+        print("[SORT] Pick cycle finished. Thử object tiếp theo...")
+    else:
+        print("[SORT] Pick failed. Thử object tiếp theo...")

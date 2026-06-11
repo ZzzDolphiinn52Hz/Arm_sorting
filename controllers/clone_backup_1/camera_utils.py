@@ -316,7 +316,45 @@ def detect_objects_with_bin():
 
     return objects
 
+def get_objects_base_with_bin(T_base_flange):
+    """
+    Lấy tất cả object camera thấy được,
+    có sẵn shape/color/bin,
+    rồi đổi position_3d từ camera frame sang base frame.
+    """
+    objects = detect_objects_with_bin()
 
+    for obj in objects:
+        obj["base_position"] = get_cube_in_base_frame(
+            obj["position_3d"],
+            T_base_flange
+        )
+
+    return objects
+
+
+def debug_print_objects_base_with_bin(T_base_flange):
+    objects = get_objects_base_with_bin(T_base_flange)
+
+    print(f"\n[BASE SORT DEBUG] objects = {len(objects)}")
+
+    for i, obj in enumerate(objects):
+        p = obj.get("base_position", None)
+
+        if p is None:
+            p_text = None
+        else:
+            p_text = [round(float(v), 4) for v in p]
+
+        print(
+            f"[{i}] "
+            f"id={obj.get('id')} | "
+            f"shape={obj.get('shape')} | "
+            f"color={obj.get('color')} | "
+            f"bin={obj.get('bin')} | "
+            f"base={p_text}"
+        )
+        
 def debug_print_detected_objects_with_bin():
     objects = detect_objects_with_bin()
 
