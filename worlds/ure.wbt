@@ -12,7 +12,6 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/containers/protos/PlasticCrate.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/Floor.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/Parquetry.proto"
-EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/softbank/nao/protos/BallCandy.proto"
 
 WorldInfo {
   info [
@@ -34,8 +33,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.4108065462129835 -0.07964301104627847 0.9082372885870973 3.490185996857678
-  position 6.449649544923387 1.7131883675065618 5.5845228607836495
+  orientation -0.5361950295714627 0.16498649699565357 0.8278129897941693 2.642771528003246
+  position 5.041843909338371 -1.3647318069844838 4.13628554221453
   exposure 1.7
   follow "UR5e:shoulder_link:upper_arm_link:forearm_link:wrist_1_link:wrist_2_link:wrist_3_link:solid"
 }
@@ -191,8 +190,87 @@ ConveyorBelt {
   borderHeight 0
   speed 0.1
 }
-DEF CUBE_1 Solid {
-  translation 3.10856 -0.504974 0.624869
+DEF cube Solid {
+  translation 3.07429 -0.550878 0.624869
+  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 0 1
+        baseColorMap ImageTexture {
+        }
+        roughness 1
+        metalness 0
+      }
+      geometry Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "cube2"
+  model "cube"
+  boundingObject DEF box Box {
+    size 0.05 0.05 0.05
+  }
+  physics DEF physic Physics {
+    mass 1.2
+  }
+  recognitionColors [
+    0 0 1
+  ]
+}
+DEF cube Solid {
+  translation 3.41173 -0.556608 0.624869
+  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 1 0 0
+        roughness 1
+        metalness 0
+      }
+      geometry Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "cube4"
+  model "cube"
+  boundingObject USE box
+  physics DEF physic Physics {
+    mass 1.2
+  }
+  recognitionColors [
+    1 0 0
+  ]
+}
+DEF cube Solid {
+  translation 3.39049 -0.747799 0.624869
+  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 1 0 0
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "cube3"
+  model "cube"
+  boundingObject USE box
+  physics DEF physic Physics {
+    mass 1.2
+  }
+  recognitionColors [
+    1 0 0
+  ]
+}
+DEF cube Solid {
+  translation 3.05594 -0.723908 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -206,61 +284,116 @@ DEF CUBE_1 Solid {
       }
     }
   ]
-  name "CUBE_1(4)"
+  name "cube1"
+  model "cube"
   boundingObject USE box
   physics DEF physic Physics {
     mass 1.2
   }
   recognitionColors [
-    1 1 1
+    0 0 1
   ]
 }
-DEF CUBE_1 Solid {
-  translation 3.6835 -0.606824 0.624869
+DEF cube Solid {
+  translation 3.28331 -0.55606 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
       appearance PBRAppearance {
-        baseColor 1 0 0
+        baseColor 1 1 0
         roughness 1
         metalness 0
       }
-      geometry DEF box Box {
-        size 0.05 0.05 0.05
+      geometry Cylinder {
+        height 0.1
+        radius 0.03
       }
     }
   ]
-  name "CUBE_1(3)"
+  name "cylinder1"
+  model "cylinder"
   boundingObject USE box
   physics DEF physic Physics {
     mass 1.2
   }
   recognitionColors [
-    1 1 1
+    1 1 0
   ]
 }
-DEF CUBE_1 Solid {
-  translation 4.02749 -0.521468 0.624869
+DEF cube Solid {
+  translation 3.28148 -0.739557 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
       appearance PBRAppearance {
-        baseColor 1 0 0
+        baseColor 1 1 0
         roughness 1
         metalness 0
       }
-      geometry DEF box Box {
-        size 0.05 0.05 0.05
+      geometry Cylinder {
+        height 0.1
+        radius 0.03
       }
     }
   ]
-  name "CUBE_1(2)"
+  name "cylinder2"
+  model "cylinder"
   boundingObject USE box
   physics DEF physic Physics {
     mass 1.2
   }
   recognitionColors [
-    1 1 1
+    1 1 0
+  ]
+}
+DEF cube Solid {
+  translation 3.16646 -0.734118 0.624869
+  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 1 0
+        roughness 1
+        metalness 0
+      }
+      geometry Sphere {
+        radius 0.03
+      }
+    }
+  ]
+  name "sphere1"
+  model "sphere"
+  boundingObject USE box
+  physics DEF physic Physics {
+    mass 1.2
+  }
+  recognitionColors [
+    0 1 0
+  ]
+}
+DEF cube Solid {
+  translation 3.17401 -0.555812 0.624869
+  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 1 0
+        roughness 1
+        metalness 0
+      }
+      geometry Sphere {
+        radius 0.03
+      }
+    }
+  ]
+  name "sphere2"
+  model "sphere"
+  boundingObject USE box
+  physics DEF physic Physics {
+    mass 1.2
+  }
+  recognitionColors [
+    0 1 0
   ]
 }
 Solid {
@@ -279,19 +412,6 @@ Solid {
   ]
   name "direct_panel(1)"
   boundingObject USE box
-}
-BallCandy {
-  translation 3.90885 -0.694636 0.69
-  color 0 1 0.2
-}
-BallCandy {
-  translation 4.28742 -0.626392 0.69
-  name "ball candy(2)"
-  color 0.9 1 0.2
-}
-BallCandy {
-  translation 3.57467 -0.800141 0.69
-  name "ball candy(1)"
 }
 Solid {
   translation -1.07036 -1.08143 0.69
@@ -394,55 +514,6 @@ Solid {
   ]
   name "direct_panel(3)"
   boundingObject USE box
-}
-DEF CUBE_1 Solid {
-  translation 3.41311 -0.604098 0.6248690000000001
-  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
-  children [
-    Shape {
-      appearance PBRAppearance {
-        baseColor 1 0 0
-        roughness 1
-        metalness 0
-      }
-      geometry DEF box Box {
-        size 0.05 0.05 0.05
-      }
-    }
-  ]
-  name "CUBE_1"
-  boundingObject USE box
-  physics DEF physic Physics {
-    mass 1.2
-  }
-  recognitionColors [
-    1 1 1
-  ]
-}
-DEF cube2 Solid {
-  translation 3.10949 -0.755912 0.624869
-  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
-  children [
-    Shape {
-      appearance PBRAppearance {
-        baseColor 0 0 1
-        roughness 1
-        metalness 0
-      }
-      geometry DEF box Box {
-        size 0.05 0.05 0.05
-      }
-    }
-  ]
-  name "CUBE_2"
-  model "cube2"
-  boundingObject USE box
-  physics DEF physic Physics {
-    mass 1.2
-  }
-  recognitionColors [
-    1 1 1
-  ]
 }
 Solid {
   translation 1.61924 -1.01393 0.5986

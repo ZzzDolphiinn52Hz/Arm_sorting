@@ -282,6 +282,60 @@ def detect_objects_shape_color():
 
     return results
 
+# ------------------------------------------------------------------
+# Object -> Bin classification debug
+# ------------------------------------------------------------------
+
+SORT_RULES = {
+    ("cube", "blue"): "BLUE_CUBE_BIN",
+    ("cube", "red"): "RED_CUBE_BIN",
+    ("cylinder", "yellow"): "YELLOW_CYLINDER_BIN",
+    ("sphere", "green"): "GREEN_SPHERE_BIN",
+}
+
+
+def classify_bin_from_shape_color(shape, color):
+    """
+    Nhận shape + color, trả về tên thùng phân loại.
+    """
+    return SORT_RULES.get((shape, color), "UNKNOWN_BIN")
+
+
+def detect_objects_with_bin():
+    """
+    Detect object như cũ, nhưng thêm field 'bin'.
+    Chưa gắp, chưa tracking, chỉ phân loại.
+    """
+    objects = detect_objects_shape_color()
+
+    for obj in objects:
+        obj["bin"] = classify_bin_from_shape_color(
+            obj["shape"],
+            obj["color"]
+        )
+
+    return objects
+
+
+def debug_print_detected_objects_with_bin():
+    objects = detect_objects_with_bin()
+
+    print(f"\n[SORT DEBUG] detected_objects = {len(objects)}")
+
+    for i, obj in enumerate(objects):
+        pos_text = [round(float(v), 3) for v in obj["position_3d"]]
+
+        print(
+            f"[{i}] "
+            f"id={obj['id']} | "
+            f"model={obj['model']} | "
+            f"shape={obj['shape']} | "
+            f"color={obj['color']} | "
+            f"bin={obj['bin']} | "
+            f"pixel=({round(obj['cx'], 1)}, {round(obj['cy'], 1)}) | "
+            f"area={round(obj['area'], 1)} | "
+            f"pos3d={pos_text}"
+        )
 
 def debug_print_detected_objects():
     objects = detect_objects_shape_color()

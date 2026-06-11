@@ -478,20 +478,12 @@ motion.wait_steps(20)
 motion.goto_pose(poses.PICK_ABOVE, steps=80)
 motion.wait_steps(20)
 
-print("=== DYNAMIC PICK LOOP START ===")
-
-print("=== VISION DEBUG ONLY START ===")
+print("=== SORT DEBUG ONLY START ===")
 
 step_count = 0
 
 while robot.step(TIME_STEP) != -1:
     if step_count % 10 == 0:
-        camera_utils.debug_print_detected_objects()
+        camera_utils.debug_print_detected_objects_with_bin()
 
     step_count += 1
-    
-'''
-while robot.step(TIME_STEP) != -1:
-    ok = dynamic_pick_cube()
-    print("[DYNAMIC] Thử lại cube tiếp theo...")
-'''
