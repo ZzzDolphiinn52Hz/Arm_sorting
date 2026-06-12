@@ -704,13 +704,13 @@ for _ in range(10):
         quit()
 
 motion.move_ur_to(poses.HOME)
-motion.wait_steps(50)
+#motion.wait_steps(50)
 
 gripper.open_gripper()
-motion.wait_steps(20)
+#motion.wait_steps(20)
 
 motion.goto_pose(poses.PICK_ABOVE, steps=80)
-motion.wait_steps(20)
+#motion.wait_steps(20)
 
 print("=== DYNAMIC SORT PICK LOOP START ===")
 
