@@ -33,8 +33,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.4346466369606155 -0.42119343001275567 0.7960391921839759 4.455713385129127
-  position 2.599310886904677 4.583300070060269 9.054800013935838
+  orientation -0.5403046794520362 -0.5729123007628847 0.6163135151826629 4.299273010698579
+  position 2.7553238005715746 0.7882119839627688 12.345678072216685
   exposure 1.7
   follow "UR5e:shoulder_link:upper_arm_link:forearm_link:wrist_1_link:wrist_2_link:wrist_3_link:solid"
 }
@@ -83,6 +83,14 @@ SolidBox {
   }
 }
 SolidBox {
+  translation 3.4596 0.367648 0.305
+  name "box(8)"
+  size 1.8 0.4 0.61
+  appearance GalvanizedMetal {
+    colorOverride 0.7 1 1
+  }
+}
+SolidBox {
   translation 1.65909 0.366592 0.305
   name "box(5)"
   size 1.8 0.4 0.61
@@ -99,7 +107,7 @@ SolidBox {
   }
 }
 SolidBox {
-  translation 1.66036 0.751982 0.305
+  translation 3.46093 0.767704 0.305
   name "box(6)"
   size 1.8 0.4 0.62
   appearance GalvanizedMetal {
@@ -107,8 +115,24 @@ SolidBox {
   }
 }
 SolidBox {
-  translation 1.6667 -0.0306284 0.305
+  translation 1.66036 0.751982 0.305
+  name "box(9)"
+  size 1.8 0.4 0.62
+  appearance GalvanizedMetal {
+    colorOverride 0.7 1 1
+  }
+}
+SolidBox {
+  translation 1.66102 -0.0313157 0.305
   name "box(2)"
+  size 1.8 0.4 0.61
+  appearance DEF appear GalvanizedMetal {
+    colorOverride 0.7 1 1
+  }
+}
+SolidBox {
+  translation 3.46168 -0.0304228 0.305
+  name "box(7)"
   size 1.8 0.4 0.61
   appearance DEF appear GalvanizedMetal {
     colorOverride 0.7 1 1
@@ -123,8 +147,9 @@ SolidBox {
   }
 }
 UR5e {
-  translation 0 0 0.61
+  translation 0.0054693 -0.0491 0.61
   rotation 5.67193e-08 2.39745e-09 -1 1.5708003061004252
+  name "UR5e_3"
   controller "clone_backup_1"
   controllerArgs [
     ""
@@ -177,6 +202,34 @@ UR5e {
     }
   ]
 }
+UR5e {
+  translation 3.26203 -0.0586656 0.71
+  rotation 5.67193e-08 2.39745e-09 -1 1.5708003061004252
+  name "UR5e_1"
+  controller "clone_backup_1"
+  controllerArgs [
+    ""
+  ]
+  supervisor TRUE
+  selfCollision FALSE
+  toolSlot [
+    DEF TCP Solid {
+      name "solid(1)"
+    }
+    DEF CAMERA_NODE Camera {
+      translation 0.01 0.1 0.02
+      rotation 0 0 1 1.5708003061004252
+      fieldOfView 2.2
+      width 1280
+      height 720
+      far 2
+      recognition Recognition {
+      }
+    }
+    DEF tool_slot Robotiq3fGripper {
+    }
+  ]
+}
 ConveyorBelt {
   translation 2.87114 -0.660956 1.75416e-14
   rotation 0 0 -1 3.141592653589793
@@ -188,10 +241,10 @@ ConveyorBelt {
   }
   borderThickness 0.0001
   borderHeight 0
-  speed 0.1
+  speed 0.05
 }
 DEF cube Solid {
-  translation 4.98195 -0.679508 0.624869
+  translation 5.34899 -0.668529 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -220,7 +273,36 @@ DEF cube Solid {
   ]
 }
 DEF cube Solid {
-  translation 4.20765 -0.691036 0.624869
+  translation 6.15346 -0.577361 0.624869
+  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 0 1
+        baseColorMap ImageTexture {
+        }
+        roughness 1
+        metalness 0
+      }
+      geometry Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "cube2(1)"
+  model "cube"
+  boundingObject DEF box Box {
+    size 0.05 0.05 0.05
+  }
+  physics DEF physic Physics {
+    mass 1.2
+  }
+  recognitionColors [
+    0 0 1
+  ]
+}
+DEF cube Solid {
+  translation 4.81159 -0.707733 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -245,7 +327,32 @@ DEF cube Solid {
   ]
 }
 DEF cube Solid {
-  translation 3.86468 -0.697289 0.624869
+  translation 5.15409 -0.642241 0.624869
+  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 1 0 0
+        roughness 1
+        metalness 0
+      }
+      geometry Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "cube4(1)"
+  model "cube"
+  boundingObject USE box
+  physics DEF physic Physics {
+    mass 1.2
+  }
+  recognitionColors [
+    1 0 0
+  ]
+}
+DEF cube Solid {
+  translation 5.86069 -0.72954 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -270,7 +377,7 @@ DEF cube Solid {
   ]
 }
 DEF cube Solid {
-  translation 3.02724 -0.686943 0.624869
+  translation 5.01515 -0.776577 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -295,7 +402,32 @@ DEF cube Solid {
   ]
 }
 DEF cube Solid {
-  translation 5.74674 -0.669011 0.624869
+  translation 5.71542 -0.517402 0.624869
+  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 0 1
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "cube1(1)"
+  model "cube"
+  boundingObject USE box
+  physics DEF physic Physics {
+    mass 1.2
+  }
+  recognitionColors [
+    0 0 1
+  ]
+}
+DEF cube Solid {
+  translation 5.63072 -0.647893 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -321,7 +453,33 @@ DEF cube Solid {
   ]
 }
 DEF cube Solid {
-  translation 4.61705 -0.679628 0.624869
+  translation 5.51709 -0.502684 0.624869
+  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 1 1 0
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        height 0.1
+        radius 0.03
+      }
+    }
+  ]
+  name "cylinder1(1)"
+  model "cylinder"
+  boundingObject USE box
+  physics DEF physic Physics {
+    mass 1.2
+  }
+  recognitionColors [
+    1 1 0
+  ]
+}
+DEF cube Solid {
+  translation 4.95972 -0.527803 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -347,7 +505,7 @@ DEF cube Solid {
   ]
 }
 DEF cube Solid {
-  translation 3.44815 -0.694088 0.624869
+  translation 5.26121 -0.528978 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -357,7 +515,7 @@ DEF cube Solid {
         metalness 0
       }
       geometry Sphere {
-        radius 0.03
+        radius 0.035
       }
     }
   ]
@@ -372,7 +530,7 @@ DEF cube Solid {
   ]
 }
 DEF cube Solid {
-  translation 5.35452 -0.674801 0.624869
+  translation 5.52205 -0.772094 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -382,11 +540,36 @@ DEF cube Solid {
         metalness 0
       }
       geometry Sphere {
-        radius 0.03
+        radius 0.035
       }
     }
   ]
   name "sphere2"
+  model "sphere"
+  boundingObject USE box
+  physics DEF physic Physics {
+    mass 1.2
+  }
+  recognitionColors [
+    0 1 0
+  ]
+}
+DEF cube Solid {
+  translation 5.96419 -0.569168 0.624869
+  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 1 0
+        roughness 1
+        metalness 0
+      }
+      geometry Sphere {
+        radius 0.035
+      }
+    }
+  ]
+  name "sphere2(1)"
   model "sphere"
   boundingObject USE box
   physics DEF physic Physics {
@@ -428,57 +611,6 @@ Solid {
     }
   ]
   name "direct_panel(4)"
-  boundingObject USE box
-}
-Solid {
-  translation 0.868065 -0.958509 0.69
-  rotation 0 0 1 -0.6544996938995746
-  children [
-    Shape {
-      appearance PBRAppearance {
-        roughness 1
-        metalness 0
-      }
-      geometry DEF box Box {
-        size 0.18 0.001 0.16
-      }
-    }
-  ]
-  name "direct_panel(6)"
-  boundingObject USE box
-}
-Solid {
-  translation -0.750664 -0.954252 0.69
-  rotation 0 0 1 -0.6544996938995746
-  children [
-    Shape {
-      appearance PBRAppearance {
-        roughness 1
-        metalness 0
-      }
-      geometry DEF box Box {
-        size 0.18 0.001 0.16
-      }
-    }
-  ]
-  name "direct_panel(7)"
-  boundingObject USE box
-}
-Solid {
-  translation 1.30852 -1.56356 0.69
-  rotation 0 0 1 -1.963500306100425
-  children [
-    Shape {
-      appearance PBRAppearance {
-        roughness 1
-        metalness 0
-      }
-      geometry DEF box Box {
-        size 0.18 0.001 0.16
-      }
-    }
-  ]
-  name "direct_panel(5)"
   boundingObject USE box
 }
 Solid {
@@ -582,6 +714,14 @@ DEF RED_BIN PlasticCrate {
   mass 1.5
 }
 DEF RED_BIN PlasticCrate {
+  translation 3.47053 0.430786 0.613301
+  rotation 0.9999999901776898 2.0317276575366017e-10 -0.0001401592667041308 0.014955468142489013
+  name "red_bin2(9)"
+  size 0.16 0.3 0.3
+  color 0 0 1
+  mass 1.5
+}
+DEF RED_BIN PlasticCrate {
   translation 0.205861 0.406461 0.613301
   rotation 0.9999999901776898 2.0317276575366017e-10 -0.0001401592667041308 0.014955468142489013
   name "red_bin2(8)"
@@ -593,6 +733,13 @@ DEF RED_BIN PlasticCrate {
   translation 1.71089 0.433948 0.613301
   rotation 0.9999999901776898 2.0317276575366017e-10 -0.0001401592667041308 0.014955468142489013
   name "red_bin2(3)"
+  size 0.16 0.3 0.3
+  mass 1
+}
+DEF RED_BIN PlasticCrate {
+  translation 3.30727 0.429788 0.613301
+  rotation 0.9999999901776898 2.0317276575366017e-10 -0.0001401592667041308 0.014955468142489013
+  name "red_bin2(10)"
   size 0.16 0.3 0.3
   mass 1
 }
@@ -620,9 +767,25 @@ DEF RED_BIN PlasticCrate {
   mass 1
 }
 DEF RED_BIN PlasticCrate {
-  translation 1.54607 0.430725 0.613301
+  translation 2.98305 0.428465 0.613301
+  rotation 0.9999999901776898 2.0317276575366017e-10 -0.0001401592667041308 0.014955468142489013
+  name "red_bin2(12)"
+  size 0.16 0.3 0.3
+  color 0 1 0
+  mass 1
+}
+DEF RED_BIN PlasticCrate {
+  translation 3.14666 0.430994 0.613301
   rotation 0.9999999901776898 2.0317276575366017e-10 -0.0001401592667041308 0.014955468142489013
   name "red_bin2(5)"
+  size 0.16 0.3 0.3
+  color 1 1 0
+  mass 1
+}
+DEF RED_BIN PlasticCrate {
+  translation 1.54607 0.430725 0.613301
+  rotation 0.9999999901776898 2.0317276575366017e-10 -0.0001401592667041308 0.014955468142489013
+  name "red_bin2(11)"
   size 0.16 0.3 0.3
   color 1 1 0
   mass 1
