@@ -156,19 +156,6 @@ def is_valid_vector(v, size=None):
         return False
     return np.all(np.isfinite(arr))
 
-
-def reset_object_tracker():
-    tracker["id"] = None
-    tracker["pos"] = None
-    tracker["vel"] = np.zeros(3)
-    tracker["last_meas"] = None
-    tracker["lost"] = 0
-    tracker["too_late_count"] = 0
-    tracker["ik_fail_count"] = 0
-    if hasattr(camera_utils, "reset_target_lock"):
-        camera_utils.reset_target_lock()
-
-
 def limit_joint_step(current_q, target_q, max_step=MAX_JOINT_STEP):
     current_q = np.array(current_q, dtype=float)
     target_q = np.array(target_q, dtype=float)
@@ -583,35 +570,35 @@ def dynamic_lift_after_pick(lift_height=0.18):
     return motion.goto_pose(q_lift, steps=30, tolerance=0.04)
 
 def place_object_to_bin(bin_name):
-    """
-    Nhận tên bin, tự lấy pose above/down tương ứng rồi thả vật.
-    """
-
     if bin_name not in BIN_POSES:
         print(f"[SORT WARNING] Không có bin '{bin_name}', dùng UNKNOWN_BIN")
         bin_name = "UNKNOWN_BIN"
 
     bin_above, bin_down = BIN_POSES[bin_name]
-
     print(f"[SORT] Đưa object tới {bin_name}")
 
-    motion.goto_pose(poses.SAFE_MID, steps=5)
+    if not motion.goto_pose(poses.SAFE_MID, steps=20):
+        return False
 
-    motion.goto_pose(bin_above, steps=10)
-    motion.goto_pose(bin_down, steps=5)
+    if not motion.goto_pose(bin_above, steps=30):
+        return False
+
+    if not motion.goto_pose(bin_down, steps=20):
+        return False
 
     gripper.open_gripper()
-    # motion.wait_steps(6)
+    motion.wait_steps(8)
 
-    motion.goto_pose(bin_above, steps=10)
-    motion.goto_pose(poses.SAFE_MID, steps=5)
-    motion.goto_pose(poses.PICK_ABOVE, steps=5)
+    if not motion.goto_pose(bin_above, steps=25):
+        return False
+
+    motion.goto_pose(poses.SAFE_MID, steps=20)
+    motion.goto_pose(poses.PICK_ABOVE, steps=30)
 
     return True
 
 def dynamic_pick_cube():
     print("\n=== DYNAMIC PICK START ===")
-    # reset_object_tracker()
     reset_object_tracker()
 
     ok = dynamic_track_to_cube(
@@ -679,20 +666,14 @@ def dynamic_pick_cube():
 
     # Tạm thời bỏ check để test sorting theo bin trước
     print(f"[SORT TEST] Picked bin = {picked_bin}")
-    place_object_to_bin(picked_bin)
+    place_ok = place_object_to_bin(picked_bin)
 
-    """
-    if camera_utils.check_if_picked_successfully(wait_steps_fn=motion.wait_steps):
-        print(f"[SORT] Picked bin = {picked_bin}")
-        place_object_to_bin(picked_bin)
-    else:
-        print("Pick missed. Returning HOME for next target...")
-
-    gripper.open_gripper()
     reset_object_tracker()
-    motion.goto_pose(poses.PICK_ABOVE, steps=50)
+
+    if not place_ok:
+        return False
+
     return True
-    """
 
 
 # =========================

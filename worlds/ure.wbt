@@ -33,8 +33,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.5403046794520362 -0.5729123007628847 0.6163135151826629 4.299273010698579
-  position 2.7553238005715746 0.7882119839627688 12.345678072216685
+  orientation -0.2700857899251367 0.0956372466472839 0.9580747273225828 2.4874641793107286
+  position 7.604317348752295 -4.7829617515163125 4.986733915019269
   exposure 1.7
   follow "UR5e:shoulder_link:upper_arm_link:forearm_link:wrist_1_link:wrist_2_link:wrist_3_link:solid"
 }
@@ -150,7 +150,7 @@ UR5e {
   translation 0.0054693 -0.0491 0.61
   rotation 5.67193e-08 2.39745e-09 -1 1.5708003061004252
   name "UR5e_3"
-  controller "clone_backup_1"
+  controller "final"
   controllerArgs [
     ""
   ]
@@ -164,8 +164,8 @@ UR5e {
       translation 0.01 0.1 0.02
       rotation 0 0 1 1.5708003061004252
       fieldOfView 2.2
-      width 1280
-      height 720
+      width 640
+      height 360
       far 2
       recognition Recognition {
       }
@@ -178,7 +178,7 @@ UR5e {
   translation 1.69699 -0.0532074 0.61
   rotation 5.67193e-08 2.39745e-09 -1 1.5708003061004252
   name "UR5e_2"
-  controller "clone_backup_1"
+  controller "final"
   controllerArgs [
     ""
   ]
@@ -192,8 +192,8 @@ UR5e {
       translation 0.01 0.1 0.02
       rotation 0 0 1 1.5708003061004252
       fieldOfView 2.2
-      width 1280
-      height 720
+      width 640
+      height 360
       far 2
       recognition Recognition {
       }
@@ -206,7 +206,7 @@ UR5e {
   translation 3.26203 -0.0586656 0.71
   rotation 5.67193e-08 2.39745e-09 -1 1.5708003061004252
   name "UR5e_1"
-  controller "clone_backup_1"
+  controller "final"
   controllerArgs [
     ""
   ]
@@ -220,8 +220,8 @@ UR5e {
       translation 0.01 0.1 0.02
       rotation 0 0 1 1.5708003061004252
       fieldOfView 2.2
-      width 1280
-      height 720
+      width 640
+      height 360
       far 2
       recognition Recognition {
       }
@@ -244,8 +244,7 @@ ConveyorBelt {
   speed 0.05
 }
 DEF cube Solid {
-  translation 5.34899 -0.668529 0.624869
-  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  translation 5.29276 -0.767276 0.624869
   children [
     Shape {
       appearance PBRAppearance {
@@ -273,7 +272,35 @@ DEF cube Solid {
   ]
 }
 DEF cube Solid {
-  translation 6.15346 -0.577361 0.624869
+  translation 6.62782 -0.788155 0.624869
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 0 1
+        baseColorMap ImageTexture {
+        }
+        roughness 1
+        metalness 0
+      }
+      geometry Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "cube2(2)"
+  model "cube"
+  boundingObject DEF box Box {
+    size 0.05 0.05 0.05
+  }
+  physics DEF physic Physics {
+    mass 1.2
+  }
+  recognitionColors [
+    0 0 1
+  ]
+}
+DEF cube Solid {
+  translation 6.25406 -0.562305 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -327,8 +354,7 @@ DEF cube Solid {
   ]
 }
 DEF cube Solid {
-  translation 5.15409 -0.642241 0.624869
-  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  translation 5.22512 -0.634181 0.624869
   children [
     Shape {
       appearance PBRAppearance {
@@ -352,7 +378,7 @@ DEF cube Solid {
   ]
 }
 DEF cube Solid {
-  translation 5.86069 -0.72954 0.624869
+  translation 6.01488 -0.546292 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -367,6 +393,31 @@ DEF cube Solid {
     }
   ]
   name "cube3"
+  model "cube"
+  boundingObject USE box
+  physics DEF physic Physics {
+    mass 1.2
+  }
+  recognitionColors [
+    1 0 0
+  ]
+}
+DEF cube Solid {
+  translation 6.73072 -0.404141 0.624869
+  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 1 0 0
+        roughness 1
+        metalness 0
+      }
+      geometry DEF box Box {
+        size 0.05 0.05 0.05
+      }
+    }
+  ]
+  name "cube3(1)"
   model "cube"
   boundingObject USE box
   physics DEF physic Physics {
@@ -402,7 +453,7 @@ DEF cube Solid {
   ]
 }
 DEF cube Solid {
-  translation 5.71542 -0.517402 0.624869
+  translation 5.7342 -0.541848 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -427,7 +478,7 @@ DEF cube Solid {
   ]
 }
 DEF cube Solid {
-  translation 5.63072 -0.647893 0.624869
+  translation 5.83905 -0.703245 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -453,7 +504,33 @@ DEF cube Solid {
   ]
 }
 DEF cube Solid {
-  translation 5.51709 -0.502684 0.624869
+  translation 6.50675 -0.521746 0.624869
+  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 1 1 0
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        height 0.1
+        radius 0.03
+      }
+    }
+  ]
+  name "cylinder1(2)"
+  model "cylinder"
+  boundingObject USE box
+  physics DEF physic Physics {
+    mass 1.2
+  }
+  recognitionColors [
+    1 1 0
+  ]
+}
+DEF cube Solid {
+  translation 5.59844 -0.612729 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -479,7 +556,7 @@ DEF cube Solid {
   ]
 }
 DEF cube Solid {
-  translation 4.95972 -0.527803 0.624869
+  translation 5.0018 -0.561379 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -505,7 +582,7 @@ DEF cube Solid {
   ]
 }
 DEF cube Solid {
-  translation 5.26121 -0.528978 0.624869
+  translation 5.38391 -0.524566 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -530,7 +607,7 @@ DEF cube Solid {
   ]
 }
 DEF cube Solid {
-  translation 5.52205 -0.772094 0.624869
+  translation 6.0548 -0.713449 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -555,7 +632,32 @@ DEF cube Solid {
   ]
 }
 DEF cube Solid {
-  translation 5.96419 -0.569168 0.624869
+  translation 6.34289 -0.77685 0.624869
+  rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 1 0
+        roughness 1
+        metalness 0
+      }
+      geometry Sphere {
+        radius 0.035
+      }
+    }
+  ]
+  name "sphere2(2)"
+  model "sphere"
+  boundingObject USE box
+  physics DEF physic Physics {
+    mass 1.2
+  }
+  recognitionColors [
+    0 1 0
+  ]
+}
+DEF cube Solid {
+  translation 4.81403 -0.549438 0.624869
   rotation 1.275652247421756e-06 3.7664884756548785e-06 0.999999999992093 0
   children [
     Shape {
@@ -594,40 +696,6 @@ Solid {
     }
   ]
   name "direct_panel(1)"
-  boundingObject USE box
-}
-Solid {
-  translation -1.07036 -1.08143 0.69
-  rotation 0 0 1 0.916295
-  children [
-    Shape {
-      appearance PBRAppearance {
-        roughness 1
-        metalness 0
-      }
-      geometry DEF box Box {
-        size 0.18 0.001 0.16
-      }
-    }
-  ]
-  name "direct_panel(4)"
-  boundingObject USE box
-}
-Solid {
-  translation -1.20358 -0.880721 0.69
-  rotation 0 0 1 0.916299
-  children [
-    Shape {
-      appearance PBRAppearance {
-        roughness 1
-        metalness 0
-      }
-      geometry DEF box Box {
-        size 0.6 0.001 0.16
-      }
-    }
-  ]
-  name "direct_panel(2)"
   boundingObject USE box
 }
 Solid {
