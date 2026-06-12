@@ -1,4 +1,4 @@
-# UR5e Dynamic Sorting Controller - Clean Version
+# UR5e Dynamic Sorting Controller
 
 ## Purpose
 This folder contains a cleaned and modular version of the previous `clone_backup_1.py` controller.
