@@ -15,7 +15,7 @@ This repository contains a modular UR5e robotic arm controller for **dynamic obj
 
 ## System Architecture
 
-The controller is organized into the following modules:
+The controller is organized into the following modules in `controllers/final/`:
 
 ### Core Modules
 
@@ -65,12 +65,12 @@ The controller is organized into the following modules:
 
 ### Setup in Webots
 
-1. Create a controller folder in your Webots project:
+1. Copy the `controllers/final/` folder to your Webots project:
    ```
    controllers/ur5e_sorting_final/
    ```
 
-2. Copy all `.py` files from this repository into that folder
+2. Copy all `.py` files from `controllers/final/` into that folder
 
 3. In the Webots Scene Tree:
    - Select the UR5e robot node
