@@ -4,6 +4,8 @@
 
 <video src="./demo.mp4" width="100%" controls></video>
 
+[[Video]](./demo.mp4)
+
 This repository contains a modular UR5e robotic arm controller for **dynamic object sorting** in Webots simulation. The system uses computer vision to identify and track moving objects on a conveyor belt, dynamically predicts their trajectories, and performs real-time pick-and-place operations to sort objects into category-specific bins.
 
 ## Key Features
