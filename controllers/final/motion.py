@@ -20,7 +20,7 @@ _ur_sensors = []
 
 # Slightly faster than 0.8 so the arm can use more of the camera-visible belt
 # before the cube leaves the reachable window. Keep below motor maxVelocity.
-DEFAULT_MOTOR_VELOCITY = 23
+DEFAULT_MOTOR_VELOCITY = 2.5
 
 
 def init(robot, time_step):
@@ -349,7 +349,7 @@ def inverse_kinematics_pose(
     damping=0.05,
     max_step=0.06,
     position_weight=1.0,
-    orientation_weight=2.2,
+    orientation_weight=1.4,
     stay_near_seed=0.002,
     verbose=False,
 ):
